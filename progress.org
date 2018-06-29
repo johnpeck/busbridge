@@ -1,0 +1,20 @@
+#+CATEGORY: pirate
+* pirate -- Automating I2C and SPI with the Bus Pirate
+* ----------------------------- Dated notes ---------------------------
+* <2018-06-25 Mon> Started this project
+
+* -------------------------- Notes with links -------------------------
+
+* ---------------------------- People notes ---------------------------
+
+* ------------------------------ TODO list ----------------------------
+* Software
+** TODO Set up script to autodetect pirate
+   DEADLINE: <2018-06-28 Thu>
+* Hardware
+** TODO Get an LM75A breakout board to experiment with
+   DEADLINE: <2018-07-09 Mon>
+   - EVLPN 20-20
+   - Asked Cecilia to order this on <2018-06-26 Tue>.
+** DONE Make a box to hold pirate + cords and sensors
+   DEADLINE: <2018-06-25 Mon>
