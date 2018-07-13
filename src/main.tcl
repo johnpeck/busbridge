@@ -127,6 +127,16 @@ if [string equal [dict get $state channel] "none"] {
 
 pirate::set_bitbang_mode
 
+# Go into bitbang SPI mode
+# ${log}::debug "Trying to set bitbang SPI mode"
+# pirate::sendcmd $channel [format %c 1]
+# set data [chan read $channel 20]
+# ${log}::debug "Got $data after trying to enter SPI mode"
+pirate::set_bitbang.spi_mode
+
+pirate::set_peripheral_power on
+after 1000
+
 # We need to go back to HiZ mode before we're done, otherwise USB will
 # be locked up.
 pirate::set_hiz_mode
