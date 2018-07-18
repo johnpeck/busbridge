@@ -40,6 +40,45 @@ set state [dict create \
 	       serlog none
 	  ]
 
+# Bus Pirate states
+dict set state pirate mode "none"
+
+# Voltage at peripheral power pin -- 0 means 0V, 1 means 3.3V or 5V
+dict set state pirate peripheral power 0
+
+# Pullups on serial bus pins -- 0 means push/pull, 1 means open drain
+dict set state pirate peripheral pullups 0
+
+# Auxiliary pin state
+dict set state pirate peripheral auxpin 0
+
+# CS pin state
+dict set state pirate peripheral cspin 1
+
+# SPI bit rate
+# 0b000 -- 30 kHz
+# 0b001 -- 125 kHz
+# 0b010 -- 250 kHz
+# 0b011 -- 1 MHz
+# 0b100 -- 2 MHz
+# 0b101 -- 2.6 MHz
+# 0b110 -- 4 MHz
+# 0b111 -- 8 MHz
+
+# SPI pin impedance -- 0 means HiZ, 1 means output
+dict set state pirate spi zout 0
+
+# Idle clock state -- 0 means the clock idles low
+dict set state pirate spi cpol 0
+
+# Active clock edge -- 0 means data is sampled on leading edge
+dict set state pirate spi cpha 1
+
+# Data sampling timing -- 0 means data is sampled in the middle of the
+# active clock edge.
+dict set state pirate spi smp 0
+
+
 # --------------------- Tools for code modules ------------------------
 source ../lib/module_tools.tcl	
 
@@ -112,7 +151,7 @@ foreach alias [connection::get_potential_aliases] {
 	if {[string first "HiZ" $data] >= 0} {
 	    # We found the string we wanted to find in the response
 	    ${log}::info "Successful connection to Bus Pirate at $alias"
-	    dict set state hardware mode "hiz"
+	    dict set state pirate mode "hiz"
 	    break
 	}
     } else {
@@ -140,7 +179,7 @@ after 1000
 # We need to go back to HiZ mode before we're done, otherwise USB will
 # be locked up.
 pirate::set_hiz_mode
-
+chan close $channel
 
 
 
