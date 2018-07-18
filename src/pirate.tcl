@@ -27,7 +27,7 @@ namespace eval pirate {
 	# Try to clean out the channel
 	chan read $channel 20
 	# Now send the data
-	${log}::debug "Sending $data"
+	${log}::debug "Sending 0x[format %x $data]"
 	puts -nonewline $channel [format %c $data]
 	after $pirate::character_delay_ms
 	# Read the return value
@@ -125,9 +125,22 @@ namespace eval pirate {
 	global state
 	global log
 	set channel [dict get $state channel]
+	set wxyz "0b0100"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    if {[string match "on" $setting]} {
+		${log}::debug "Setting wxyz"
+		# Turn power on
+		append wxyz 1
+	    } else {
+		# Turn power off
+		append wxyz 0
+	    }
+	    append wxyz [dict get $state pirate peripheral pullups]
+	    append wxyz [dict get $state pirate peripheral auxpin]
+	    append wxyz [dict get $state pirate peripheral cspin]
 	    try {
-		pirate::send_bitbang_command $channel 0x48
+		# pirate::send_bitbang_command $channel 0x48
+		pirate::send_bitbang_command $channel $wxyz
 		${log}::debug "Turning peripheral power on"
 		dict set state pirate peripheral power 1
 		return
