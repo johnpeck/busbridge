@@ -55,18 +55,10 @@ dict set state pirate peripheral auxpin 0
 # CS pin state
 dict set state pirate peripheral cspin 1
 
-# SPI bit rate
-# 0b000 -- 30 kHz
-# 0b001 -- 125 kHz
-# 0b010 -- 250 kHz
-# 0b011 -- 1 MHz
-# 0b100 -- 2 MHz
-# 0b101 -- 2.6 MHz
-# 0b110 -- 4 MHz
-# 0b111 -- 8 MHz
+
 
 # SPI pin impedance -- 0 means HiZ, 1 means output
-dict set state pirate spi zout 0
+dict set state pirate spi zout 1
 
 # Idle clock state -- 0 means the clock idles low
 dict set state pirate spi cpol 0
@@ -117,6 +109,32 @@ proc iterint {start points} {
     return $intlist
 }
 
+proc dec2bin {i {width {}}} {
+    # returns the binary representation of $i
+    #
+    # Arguments:
+    #   width -- if present, determines the length of the
+    #     returned string (left truncated or added left 0)
+    set res {}
+    if {$i<0} {
+        set sign -
+        set i [expr {abs($i)}]
+    } else {
+        set sign {}
+    }
+    while {$i>0} {
+        set res [expr {$i%2}]$res
+        set i [expr {$i/2}]
+    }
+    if {$res eq {}} {set res 0}
+
+    if {$width ne {}} {
+        append d [string repeat 0 $width] $res
+        set res [string range $d [string length $res] end]
+    }
+    return $sign$res
+}
+
 # Testing the logger
 
 puts "Current loglevel is: [${log}::currentloglevel] \n"
@@ -164,6 +182,8 @@ if [string equal [dict get $state channel] "none"] {
     exit
 }
 
+
+
 pirate::set_bitbang_mode
 
 # Go into bitbang SPI mode
@@ -172,8 +192,15 @@ pirate::set_bitbang_mode
 # set data [chan read $channel 20]
 # ${log}::debug "Got $data after trying to enter SPI mode"
 pirate::set_bitbang.spi_mode
+pirate::set_spi_config
 
 pirate::set_peripheral_power on
+pirate::set_spi_speed 3
+pirate::set_spi_cs 1
+pirate::set_spi_cs 0
+pirate::transfer_spi_byte 0
+pirate::set_spi_cs 1
+
 after 1000
 
 # We need to go back to HiZ mode before we're done, otherwise USB will

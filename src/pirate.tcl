@@ -139,7 +139,6 @@ namespace eval pirate {
 	    append wxyz [dict get $state pirate peripheral auxpin]
 	    append wxyz [dict get $state pirate peripheral cspin]
 	    try {
-		# pirate::send_bitbang_command $channel 0x48
 		pirate::send_bitbang_command $channel $wxyz
 		${log}::debug "Turning peripheral power on"
 		dict set state pirate peripheral power 1
@@ -152,8 +151,108 @@ namespace eval pirate {
 	    ${log}::error "Must set bitbang.spi mode before turning power on"
 	    exit
 	}
+    }
 
+    proc set_spi_speed {setting} {
+	# Set the SPI bitrate
+	# 0 -- 30 kHz
+	# 1 -- 125 kHz
+	# 2 -- 250 kHz
+	# 3 -- 1 MHz
+	# 4 -- 2 MHz
+	# 5 -- 2.6 MHz
+	# 6 -- 4 MHz
+	# 7 -- 8 MHz
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b01100"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    append databits [dec2bin $setting 3]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		${log}::debug "Setting SPI speed to $setting"
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before setting SPI speed"
+	    exit
+	}
+    }
 
+    proc set_spi_config {} {
+	# Set configurations from defaults
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b1000"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    append databits [dict get $state pirate spi zout]
+	    append databits [dict get $state pirate spi cpol]
+	    append databits [dict get $state pirate spi cpha]
+	    append databits [dict get $state pirate spi smp]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		${log}::debug "Setting SPI configuration to $setting"
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before configuring SPI"
+	    exit
+	}
+    }
+
+    proc set_spi_cs {setting} {
+	# Set cs to 1 or 0
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b0000001"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    if {$setting} {
+		append databits 1
+	    } else {
+		append databits 0
+	    }
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		${log}::debug "Setting SPI CS to $setting"
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before using SPI"
+	    exit
+	}
+    }
+
+    proc transfer_spi_byte {data} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b00010000"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		${log}::debug "Transferring 1 byte"
+		pirate::send_bitbang_command $channel 0xff
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before using SPI"
+	    exit
+	}
     }
     
     proc set_hiz_mode {} {
