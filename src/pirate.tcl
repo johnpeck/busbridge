@@ -2,7 +2,7 @@ namespace eval pirate {
     # Procedures and variables unique to the Bus Pirate
 
     # How long to wait for solicited data to appear
-    variable character_delay_ms 100
+    variable character_delay_ms 10
     
     proc init {channel} {
 	connection::get_unsolicited $channel 100
@@ -275,8 +275,35 @@ namespace eval pirate {
 		pirate::send_bitbang_command $channel $databits
 		${log}::debug "Transferring 1 byte"
 		puts -nonewline $channel [format %c $data]
-		after 100
+		after $pirate::character_delay_ms
 		chan read $channel 20
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before using SPI"
+	    exit
+	}
+    }
+
+    proc transfer_spi_data {byte_list} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set bytes [llength $byte_list]
+	${log}::debug "Request to send $bytes bytes over SPI"
+	set databits "0b0001"
+	append databits [dec2bin [expr $bytes - 1] 4]
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		foreach byte $byte_list {
+		    puts -nonewline $channel [format %c $byte]
+		    after $pirate::character_delay_ms
+		    chan read $channel 20		    
+		}
 		return
 	    } trap {} {message opdict} {
 		puts "$message"

@@ -67,7 +67,7 @@ dict set state pirate spi cpha 1
 
 # Data sampling timing -- 0 means data is sampled in the middle of the
 # active clock edge.
-dict set state pirate spi smp 1
+dict set state pirate spi smp 0
 
 
 # --------------------- Tools for code modules ------------------------
@@ -201,17 +201,31 @@ pirate::set_spi_config
 pirate::set_spi_speed 3
 pirate::set_peripheral_power on
 
+set count 0
+set start_time [clock seconds]
+set now_time 0
+set timeout 10
 
 
-foreach count [iterint 0 255] {
+
+while {[expr $now_time - $start_time] < $timeout} {
     pirate::set_spi_cs 0
-    pirate::transfer_spi_byte 0
-    pirate::transfer_spi_byte $count
+    if {$count == 9} {
+	set increasing false
+    }
+    if {$count == 0} {
+	set increasing true
+    }
+    set bardata [expr 1 << $count]
+    pirate::transfer_spi_data [list [expr $bardata >> 8] [expr $bardata % 2**8]]
     pirate::set_spi_cs 1
+    if $increasing {
+	incr count 1
+    } else {
+	incr count -1
+    }
+    set now_time [clock seconds]
 }
-
-
-after 5000
 
 # We need to go back to HiZ mode before we're done, otherwise USB will
 # be locked up.

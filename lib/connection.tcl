@@ -106,7 +106,7 @@ namespace eval connection {
 		chan configure $channel -mode $mode \
 		    -buffering none \
 		    -blocking 0 \
-		    -translation auto
+		    -translation binary
 	    } 
 	}
 	return $channel	
