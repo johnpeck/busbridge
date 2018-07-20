@@ -198,11 +198,18 @@ pirate::set_bitbang.spi_mode
 
 pirate::set_spi_config
 
-pirate::set_spi_speed 1
+pirate::set_spi_speed 3
 pirate::set_peripheral_power on
 
-# pirate::transfer_spi_byte 0
-pirate::set_spi_cs 1
+
+
+foreach count [iterint 0 255] {
+    pirate::set_spi_cs 0
+    pirate::transfer_spi_byte 0
+    pirate::transfer_spi_byte $count
+    pirate::set_spi_cs 1
+}
+
 
 after 5000
 

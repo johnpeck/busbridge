@@ -238,7 +238,8 @@ namespace eval pirate {
     }
 
     proc set_spi_cs {setting} {
-	# Set cs to 1 or 0
+	# Set cs to 1 or 0.  This actually sets the cs pin to logic
+	# high (1) or low (0) if the pin is configured for push/pull.
 	global state
 	global log
 	set channel [dict get $state channel]
@@ -273,7 +274,7 @@ namespace eval pirate {
 	    try {
 		pirate::send_bitbang_command $channel $databits
 		${log}::debug "Transferring 1 byte"
-		puts -nonewline $channel [format %c 0xff]
+		puts -nonewline $channel [format %c $data]
 		after 100
 		chan read $channel 20
 		return
