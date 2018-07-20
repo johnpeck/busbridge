@@ -37,7 +37,8 @@ namespace eval pirate {
 	    # Sent command was a success
 	    return -code ok
 	} else {
-	    set error_message "send_bitbang_command (channel) $data failed"
+	    set error_message "send_bitbang_command (channel) $data failed. "
+	    append error_message "Expected 1, got $return_data."
 	    ${log}::error $error_message
 	    return -code error $error_message
 	}
@@ -125,22 +126,21 @@ namespace eval pirate {
 	global state
 	global log
 	set channel [dict get $state channel]
-	set wxyz "0b0100"
+	${log}::debug "Turning peripheral power $setting"
+	set databits "0b0100"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
-	    if {[string match "on" $setting]} {
-		${log}::debug "Setting wxyz"
+	    if {[string match "on" $setting]} {		
 		# Turn power on
-		append wxyz 1
+		append databits 1
 	    } else {
 		# Turn power off
-		append wxyz 0
+		append databits 0
 	    }
-	    append wxyz [dict get $state pirate peripheral pullups]
-	    append wxyz [dict get $state pirate peripheral auxpin]
-	    append wxyz [dict get $state pirate peripheral cspin]
+	    append databits [dict get $state pirate peripheral pullups]
+	    append databits [dict get $state pirate peripheral auxpin]
+	    append databits [dict get $state pirate peripheral cspin]
 	    try {
-		pirate::send_bitbang_command $channel $wxyz
-		${log}::debug "Turning peripheral power on"
+		pirate::send_bitbang_command $channel $databits
 		dict set state pirate peripheral power 1
 		return
 	    } trap {} {message opdict} {
@@ -166,12 +166,13 @@ namespace eval pirate {
 	global state
 	global log
 	set channel [dict get $state channel]
+	${log}::debug "Setting SPI speed to $setting"
 	set databits "0b01100"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
 	    append databits [dec2bin $setting 3]
 	    try {
 		pirate::send_bitbang_command $channel $databits
-		${log}::debug "Setting SPI speed to $setting"
+	
 		return
 	    } trap {} {message opdict} {
 		puts "$message"
@@ -183,11 +184,40 @@ namespace eval pirate {
 	}
     }
 
+    proc set_pin_directions {} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	${log}::debug "Setting Aux, MOSI, Clk, MISO, and CS pins to be outputs"
+	set databits "0b0100"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    # Power supply
+	    append databits [dict get $state pirate peripheral power]
+	    # Pullups
+	    append databits [dict get $state pirate peripheral pullups]
+	    # Aux pin
+	    append databits [dict get $state pirate peripheral auxpin]
+	    # CS pin
+	    append databits [dict get $state pirate peripheral cspin]
+	    try {
+		pirate::send_bitbang_command $channel $databits		
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before configuring pin states"
+	    exit
+	}
+    }    
+
     proc set_spi_config {} {
 	# Set configurations from defaults
 	global state
 	global log
 	set channel [dict get $state channel]
+	${log}::debug "Configuring SPI clock phase"
 	set databits "0b1000"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
 	    append databits [dict get $state pirate spi zout]
@@ -196,7 +226,6 @@ namespace eval pirate {
 	    append databits [dict get $state pirate spi smp]
 	    try {
 		pirate::send_bitbang_command $channel $databits
-		${log}::debug "Setting SPI configuration to $setting"
 		return
 	    } trap {} {message opdict} {
 		puts "$message"
@@ -204,7 +233,7 @@ namespace eval pirate {
 	    }
 	} else {
 	    ${log}::error "Must set bitbang.spi mode before configuring SPI"
-	    exit
+	    # exit
 	}
     }
 
@@ -213,6 +242,7 @@ namespace eval pirate {
 	global state
 	global log
 	set channel [dict get $state channel]
+	${log}::debug "Setting SPI CS to $setting"
 	set databits "0b0000001"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
 	    if {$setting} {
@@ -222,7 +252,6 @@ namespace eval pirate {
 	    }
 	    try {
 		pirate::send_bitbang_command $channel $databits
-		${log}::debug "Setting SPI CS to $setting"
 		return
 	    } trap {} {message opdict} {
 		puts "$message"
@@ -238,12 +267,15 @@ namespace eval pirate {
 	global state
 	global log
 	set channel [dict get $state channel]
+	${log}::debug "Request to send one byte over SPI"
 	set databits "0b00010000"
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
 	    try {
 		pirate::send_bitbang_command $channel $databits
 		${log}::debug "Transferring 1 byte"
-		pirate::send_bitbang_command $channel 0xff
+		puts -nonewline $channel [format %c 0xff]
+		after 100
+		chan read $channel 20
 		return
 	    } trap {} {message opdict} {
 		puts "$message"
