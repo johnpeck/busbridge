@@ -55,19 +55,27 @@ dict set state pirate peripheral auxpin 1
 # CS pin state
 dict set state pirate peripheral cspin 1
 
-
 # SPI pin impedance -- 0 means HiZ, 1 means output
 dict set state pirate spi zout 1
 
-# Idle clock state -- 0 means the clock idles low
-dict set state pirate spi cpol 1
+# |------+------+-------------|
+# | cpol | cpha | active edge |
+# |------+------+-------------|
+# |    0 |    0 | falling     |
+# |    0 |    1 | rising      |
+# |    1 |    0 | rising      |
+# |    1 |    1 | falling     |
+# |------+------+-------------|
 
-# Active clock edge -- 0 means data is sampled on leading edge
+# Idle clock state -- 0 means the clock idles low
+dict set state pirate spi cpol 0
+
+# Active clock edge -- 0 means data is sampled on active-to-idle transition
 dict set state pirate spi cpha 1
 
-# Data sampling timing -- 0 means data is sampled in the middle of the
-# active clock edge.
-dict set state pirate spi smp 0
+# Input data sampling timing -- 0 means data is sampled in the middle
+# of the active clock edge.
+dict set state pirate spi smp 1
 
 
 # --------------------- Tools for code modules ------------------------
@@ -186,17 +194,9 @@ if [string equal [dict get $state channel] "none"] {
 pirate::set_bitbang_mode
 pirate::set_bitbang.spi_mode
 
-# Go into bitbang SPI mode
-# ${log}::debug "Trying to set bitbang SPI mode"
-# pirate::sendcmd $channel [format %c 1]
-# set data [chan read $channel 20]
-# ${log}::debug "Got $data after trying to enter SPI mode"
-
-# pirate::set_pin_directions
-
-# pirate::set_spi_cs 1
 
 pirate::set_spi_config
+
 
 pirate::set_spi_speed 3
 pirate::set_peripheral_power on
