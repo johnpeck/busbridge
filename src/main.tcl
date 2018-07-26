@@ -55,7 +55,7 @@ dict set state pirate peripheral auxpin 1
 # CS pin state
 dict set state pirate peripheral cspin 1
 
-# SPI pin impedance -- 0 means HiZ, 1 means output
+# SPI pin (MOSI, CS, SCK) impedance -- 0 means HiZ, 1 means output
 dict set state pirate spi zout 1
 
 # |------+------+-------------|
@@ -204,11 +204,11 @@ pirate::set_peripheral_power on
 set count 0
 set start_time [clock seconds]
 set now_time 0
-set timeout 10
+set program_timeout 10
 
 
 
-while {[expr $now_time - $start_time] < $timeout} {
+while {[expr $now_time - $start_time] < $program_timeout} {
     pirate::set_spi_cs 0
     if {$count == 9} {
 	set increasing false

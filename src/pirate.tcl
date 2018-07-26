@@ -24,12 +24,23 @@ namespace eval pirate {
 	#   data -- Number to send
 	global state
 	global log
+	global TIMEOUT
 	# Try to clean out the channel
 	chan read $channel 20
 	# Now send the data
 	${log}::debug "Sending 0x[format %x $data]"
 	puts -nonewline $channel [format %c $data]
-	after $pirate::character_delay_ms
+	# Wait for the returned value.  Set a timeout in case we never get one.
+	chan event $channel readable {set TIMEOUT ok}
+	after $pirate::character_delay_ms {set TIMEOUT watchdog}
+	vwait TIMEOUT
+	if {[string equal $TIMEOUT watchdog]} {
+	    # We timed out waiting for a reply
+	    set error_message "Timed out waiting for Bus Pirate"
+	    return -code error $error_message
+	}
+	after cancel {set TIMEOUT watchdog}
+	# after $pirate::character_delay_ms
 	# Read the return value
 	set return_data [chan read $channel 20]
 	set return_count [binary scan $return_data B8 returned_value]
@@ -301,7 +312,11 @@ namespace eval pirate {
 		pirate::send_bitbang_command $channel $databits
 		foreach byte $byte_list {
 		    puts -nonewline $channel [format %c $byte]
-		    after $pirate::character_delay_ms
+		    chan event $channel readable {set TIMEOUT ok}
+		    after $pirate::character_delay_ms {set TIMEOUT watchdog}
+		    vwait TIMEOUT
+		    after cancel {set TIMEOUT watchdog}
+		    # after $pirate::character_delay_ms
 		    chan read $channel 20		    
 		}
 		return
