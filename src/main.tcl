@@ -192,13 +192,16 @@ if [string equal [dict get $state channel] "none"] {
 
 
 pirate::set_bitbang_mode
-pirate::set_bitbang.spi_mode
 
+source devices/bargraph.tcl
 
-pirate::set_spi_config
+try {
+    bargraph::init    
+} trap {} {message optdict} {
+    ${log}::error $message
+    exit
+}
 
-
-pirate::set_spi_speed 3
 pirate::set_peripheral_power on
 
 set count 0
