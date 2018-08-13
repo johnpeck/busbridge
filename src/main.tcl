@@ -2,12 +2,12 @@
 
 # The name of this program.  This will get used to identify logfiles,
 # configuration files and other file outputs.
-set program_name pirate
+set program_name "busbridge"
 
 
 # The base filename for the execution log.  The actual filename will add
 # a number after this to make a unique logfile name.
-set execution_logbase "pirate"
+set execution_logbase "busbridge"
 
 # This software's version.  Anything set here will be clobbered by the
 # makefile when starpacks are built.
