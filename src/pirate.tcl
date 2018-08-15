@@ -15,13 +15,14 @@ namespace eval pirate {
 	after 100
     }
 
-    proc send_bitbang_command {channel data} {
+    proc send_bitbang_command {channel data {expected 1}} {
 	# Return ok (or 0) if command was sent successfully in bitbang
 	# mode
 	#
 	# Arguments:
 	#   channel -- tcl channel
 	#   data -- Number to send
+	#   expected -- Expected return value for a successful transaction
 	global state
 	global log
 	global TIMEOUT
@@ -43,13 +44,14 @@ namespace eval pirate {
 	# after $pirate::character_delay_ms
 	# Read the return value
 	set return_data [chan read $channel 20]
-	set return_count [binary scan $return_data B8 returned_value]
-	if {$returned_value == 1} {
+	set return_count [binary scan $return_data B8 returned_bitfield]
+	set returned_value [format %i 0b$returned_bitfield]
+	if {$returned_value == $expected} {
 	    # Sent command was a success
 	    return -code ok
 	} else {
 	    set error_message "send_bitbang_command (channel) $data failed. "
-	    append error_message "Expected 1, got $return_data."
+	    append error_message "Expected $expected, got $return_data ($returned_value)."
 	    ${log}::error $error_message
 	    return -code error $error_message
 	}
