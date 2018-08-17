@@ -13,30 +13,30 @@ try {
 
 pirate::set_peripheral_power on
 
-set count 0
 set test_done false
-
-# Usually we'd have to worry that the event loop was started when
-# using after.  In this case, all commands sent to the Bus Pirate use
-# the event loop to wait on a response.  So we've already started the
-# event loop.
 after 10000 {set test_done true}
 
-while {! $test_done} {    
+proc update_bargraph {barvalue increasing} {
+    set timenow [clock milliseconds]
+    global log
     pirate::set_spi_cs 0
-    if {$count == 9} {
+    if {$barvalue >= 511} {
 	set increasing false
     }
-    if {$count == 0} {
+    if {$barvalue <= 1} {
 	set increasing true
     }
-    set bardata [expr 1 << $count]
+    if {$increasing} {
+	set bardata [expr $barvalue << 1]
+    } else {
+	set bardata [expr $barvalue >> 1]	
+    }
     pirate::transfer_spi_data [list [expr $bardata >> 8] [expr $bardata % 2**8]]
     pirate::set_spi_cs 1
-    if $increasing {
-	incr count 1
-    } else {
-	incr count -1
-    }
+    after 10 [list update_bargraph $bardata $increasing]
+    ${log}::debug "Setting bargraph took [expr [clock milliseconds] - $timenow] ms"
 }
 
+update_bargraph 1 true
+
+vwait test_done

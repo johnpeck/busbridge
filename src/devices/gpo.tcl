@@ -22,7 +22,7 @@ namespace eval gpo {
 	# Configure all pins to be outputs
 	set databits "0b01000000"
 	try {
-	    pirate::send_bitbang_command $channel $databits [format %i $databits]
+	    pirate::send_bitbang_command $channel $databits *
 	    return
 	} trap {} {message opdict} {
 	    ${log}::error "$message"

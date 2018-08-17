@@ -16,7 +16,7 @@ after 10000 {set test_done true}
 
 proc update_auxpin {pinval} {
     gpo::write_auxpin $pinval
-    after 2000 [list update_auxpin [expr ! $pinval]]
+    after 100 [list update_auxpin [expr ! $pinval]]
 }
 
 update_auxpin 1
