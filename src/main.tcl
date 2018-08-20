@@ -79,7 +79,7 @@ dict set state pirate spi smp 1
 
 
 # --------------------- Tools for code modules ------------------------
-source ../lib/module_tools.tcl	
+source module_tools.tcl	
 
 ########################### Set up logging ###########################
 
@@ -182,8 +182,7 @@ ${log}::debug "Debug message"
 ${log}::info "Info message"
 ${log}::warn "Warn message"
 
-
-source ../lib/connection.tcl
+source connection.tcl
 source pirate.tcl
 ${log}::debug "Potential connection nodes: [connection::get_potential_aliases]"
 

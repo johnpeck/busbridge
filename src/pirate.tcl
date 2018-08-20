@@ -250,6 +250,46 @@ namespace eval pirate {
 	}
     }
 
+    proc set_spi_hiz {choice} {
+	# If choice is true, make the SPI and CS pins high-impedance
+	#
+	# Arguments:
+	#   choice -- True for high-impedance inputs, False for low-impedance outputs
+	#
+	# 0b1000<HiZ><Clock Polarity><Clock Phase><Sample time>
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b1000"
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    if $choice {
+		# Make the pins high-impedance
+		#
+		# 0 -- HiZ, 1 -- Output
+		append databits 0
+		dict set state pirate spi zout 0
+	    } else {
+		# Make the pins outputs
+		append databits 1
+		dict set state pirate spi zout 1
+	    }
+	    append databits [dict get $state pirate spi cpol]
+	    append databits [dict get $state pirate spi cpha]
+	    append databits [dict get $state pirate spi smp]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before configuring SPI"
+	    # exit
+	}
+    }
+
+
     proc set_spi_cs {setting} {
 	# Set cs to 1 or 0.  This actually sets the cs pin to logic
 	# high (1) or low (0) if the pin is configured for push/pull.
