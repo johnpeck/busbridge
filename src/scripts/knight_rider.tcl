@@ -2,7 +2,10 @@
 
 # This script is sourced at the top level, so we don't need to go up a
 # level to find the devices directory.
-source devices/bargraph.tcl
+
+# source devices/bargraph.tcl
+
+source_driver devices/bargraph.tcl
 
 try {
     bargraph::init    

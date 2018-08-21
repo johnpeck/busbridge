@@ -134,6 +134,24 @@ proc source_script {file args} {
     return -code $code $return
 }
 
+proc source_driver {device_script} {
+    # Source a TCL script inside or outside a starkit
+    global program_name
+    if [info exists starkit::topdir] {
+	set in_starkit True
+    } else {
+	set in_starkit False
+    }
+    if $in_starkit {
+	# Remove path information.  All files are in the starkit root.
+	set basename [file tail $device_script]
+	set in_kit_script [file join $starkit::topdir lib/app-$program_name/$basename]
+	uplevel [list source $in_kit_script]
+    } else {
+	uplevel [list source $device_script]
+    }
+}
+
 proc iterint {start points} {
     # Return a list of increasing integers starting with start with
     # length points
