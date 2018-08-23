@@ -301,8 +301,10 @@ namespace eval pirate {
 	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
 	    if {$setting} {
 		append databits 1
+		dict set state pirate peripheral cspin 1
 	    } else {
 		append databits 0
+		dict set state pirate peripheral cspin 0
 	    }
 	    try {
 		pirate::send_bitbang_command $channel $databits
@@ -316,6 +318,43 @@ namespace eval pirate {
 	    exit
 	}
     }
+
+    proc set_spi_aux {setting} {
+	# Set aux to 1 or 0
+	#
+	# Arguements:
+	#   setting -- 1 or 0
+	#
+	# # 0b0100<power><pullups><aux><cs>
+	global state
+	global log
+	set channel [dict get $state channel]
+	${log}::debug "Setting SPI AUX to $setting"
+	set databits "0b0100"
+
+	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	    append databits [dict get $state pirate peripheral power]
+	    append databits [dict get $state pirate peripheral pullups]
+	    if {$setting} {
+		append databits 1
+		dict set state pirate peripheral auxpin 1
+	    } else {
+		append databits 0
+		dict set state pirate peripheral auxpin 0
+	    }
+	    append databits [dict get $state pirate peripheral cspin]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.spi mode before using SPI"
+	    exit
+	}
+    }    
 
     proc transfer_spi_byte {data} {
 	global state
