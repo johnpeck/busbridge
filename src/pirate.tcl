@@ -32,18 +32,7 @@ namespace eval pirate {
 	${log}::debug "Sending 0x[format %x $data]"
 	puts -nonewline $channel [format %c $data]
 	# Wait for the returned value.  Set a timeout in case we never get one.
-	chan event $channel readable {set TIMEOUT ok}
-	after $pirate::character_delay_ms {set TIMEOUT watchdog}
-	vwait TIMEOUT
-	if {[string equal $TIMEOUT watchdog]} {
-	    # We timed out waiting for a reply
-	    set error_message "Timed out waiting for Bus Pirate"
-	    return -code error $error_message
-	}
-	after cancel {set TIMEOUT watchdog}
-	# after $pirate::character_delay_ms
-	# Read the return value
-	set return_data [chan read $channel 20]
+	set return_data [connection::wait_for_data $channel 1 5000]
 	set return_count [binary scan $return_data B8 returned_bitfield]
 	set returned_value [format %i 0b$returned_bitfield]
 	if {$returned_value == $expected || [string equal $expected *]} {

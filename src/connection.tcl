@@ -176,5 +176,29 @@ namespace eval connection {
 	global state
 	chan puts $channel
     }
+
+    proc wait_for_data {channel chars timeout_ms} {
+	# Busy loop until a byte is ready to be read or until timeout
+	#
+	# Arguments:
+	#  channel -- Channel created with open and configured with chan configure
+	#  chars -- Number of characters to read
+	#  timeout_ms -- Timeout in milliseconds
+	#
+	# Don't use the event loop for this, since Tcl might decide to
+	# slip another channel transaction in during the wait --
+	# screwing up return values.
+	set start_time_ms [clock milliseconds]
+	set channel_data ""
+	while {! [string length $channel_data]} {
+	    set channel_data [chan read $channel $chars]
+	    set elapsed_time_ms [expr [clock milliseconds] - $start_time_ms]	    
+	    if {$elapsed_time_ms >= $timeout_ms} {
+		set error_message "Channel did not respond within timeout"
+		return -code error $error_message
+	    } 
+	}
+	return $channel_data
+    }
     
 }
