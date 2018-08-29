@@ -22,7 +22,7 @@ try {
     exit
 }
 
-pirate::set_peripheral_power on
+pirate::spi_peripheral_power on
 
 # Schedule the end of the test
 set test_done false

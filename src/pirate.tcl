@@ -120,8 +120,8 @@ namespace eval pirate {
 	}
     }
 
-    proc set_peripheral_power {setting} {
-	# Turn the peripheral power on or off
+    proc spi_peripheral_power {setting} {
+	# Turn the SPI peripheral power on or off
 	#
 	# Arguments:
 	#   setting -- on or off
