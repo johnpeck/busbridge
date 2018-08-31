@@ -40,8 +40,13 @@ set state [dict create \
 	       serlog none
 	  ]
 
-# Bus Pirate states
+##################### Bus Pirate state settings ######################
+
+# Overall mode
 dict set state pirate mode "none"
+
+# Timeout for USB <--> serial replies (milliseconds)
+dict set state pirate timeout_ms 1000
 
 # Voltage at peripheral power pin -- 0 means 0V, 1 means 3.3V or 5V
 dict set state pirate peripheral power 1
