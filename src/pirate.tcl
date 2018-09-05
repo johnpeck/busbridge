@@ -25,14 +25,14 @@ namespace eval pirate {
 	#               bypass this check.
 	global state
 	global log
-	global TIMEOUT
 	# Try to clean out the channel
 	chan read $channel 20
 	# Now send the data
 	${log}::debug "Sending 0x[format %x $data]"
 	puts -nonewline $channel [format %c $data]
 	# Wait for the returned value.  Set a timeout in case we never get one.
-	set return_data [connection::wait_for_data $channel 1 5000]
+	set return_data [connection::wait_for_data $channel 1 \
+			     [dict get $state pirate timeout_ms]]
 	set return_count [binary scan $return_data B8 returned_bitfield]
 	set returned_value [format %i 0b$returned_bitfield]
 	if {$returned_value == $expected || [string equal $expected *]} {
