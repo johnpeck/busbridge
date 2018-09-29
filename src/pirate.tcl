@@ -442,5 +442,70 @@ namespace eval pirate {
 	return True
     }
 
+    proc get_version {} {
+	# Return the string the BP returns after the "i" command
+	global state
+	global log
+	set channel [dict get $state channel]
+	set alias [dict get $state alias]
+	set hardware_mode [dict get $state pirate mode]
+	if {[string match "hiz" [dict get $state pirate mode]]} {
+	    # We're already in HiZ mode, which is the only mode that
+	    # can do this.
+	    ${log}::debug "Staying in HiZ mode"
+	} else {
+	    ${log}::error "Must be in HiZ mode to get version info"
+	    exit
+	}
+	# Send the i command
+	pirate::sendcmd $channel "i"
+	set data [chan read $channel 500]
+	return $data
+    }
+
+    proc get_hw_version {version_string} {
+	# Return the hardware version string extracted from the
+	# general version information string
+	#
+	# The hardware version will look like "Bus Pirate v4"
+	#
+	# Arguments:
+	#   version_string -- Output from the BP's "i" command
+	set version_list [split $version_string "\n"]
+	set hw_version [string trim [lindex $version_list 1]]
+	return $hw_version
+    }
+
+    proc get_fw_version {version_string} {
+	# Return the firmware version string extracted from the
+	# general version information string
+	#
+	# The firmware version will look like "Community Firmware v7.0"
+	#
+	# Arguments:
+	#   version_string -- Output from the BP's "i" command
+	set version_list [split $version_string "\n"]
+	set fw_version_line [lindex $version_list 2]
+	set fw_line_list [split $fw_version_line " "]
+	set fw_version [string trim $fw_version_line]
+	return $fw_version
+    }
+
+    proc version_ok {version_string} {
+	# Return true if hardware and firmware versions are ok
+	global bus_pirate_qualified_hw_list
+	global bus_pirate_qualified_fw_list
+	if {[lsearch -ascii $bus_pirate_qualified_hw_list \
+		 [get_hw_version $version_string]] >= 0 && \
+		[lsearch -ascii $bus_pirate_qualified_fw_list \
+		     [get_fw_version $version_string]] >=0} {
+	    # The hardware and firmware are approved
+	    return True
+	} else {
+	    return False
+	}
+    }
+
+
 
 }

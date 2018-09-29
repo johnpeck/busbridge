@@ -82,6 +82,12 @@ dict set state pirate spi cpha 1
 # of the active clock edge.
 dict set state pirate spi smp 1
 
+#################### Bus Pirate approved versions ####################
+
+set bus_pirate_qualified_hw_list [list "Bus Pirate v4"]
+
+set bus_pirate_qualified_fw_list [list "Community Firmware v7.0 - goo.gl/gCzQnW"]
+
 
 # --------------------- Tools for code modules ------------------------
 source module_tools.tcl	
@@ -230,6 +236,7 @@ foreach alias [connection::get_potential_aliases] {
 	    ${log}::info "Successful connection to Bus Pirate at $alias"
 	    dict set state pirate mode "hiz"
 	    break
+	    
 	}
     } else {
 	dict set state channel "none"
@@ -240,6 +247,16 @@ if [string equal [dict get $state channel] "none"] {
     ${log}::error "Did not find a connected Bus Pirate"
     exit
 }
+
+set version_info [pirate::get_version]
+if [pirate::version_ok $version_info] {
+    # Keep going -- hardware and firmware are ok
+} else {
+    puts "Found [pirate::get_hw_version $version_info], expected something in $bus_pirate_qualified_hw_list"
+    puts "Found [pirate::get_fw_version $version_info], expected something in $bus_pirate_qualified_fw_list"
+    exit
+}
+
 
 # All of the test scripts will use bitbang mode
 pirate::set_bitbang_mode
