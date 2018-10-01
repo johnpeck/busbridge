@@ -197,6 +197,119 @@ namespace eval pirate {
 	}
     }
 
+    proc set_i2c_start_condition {} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b00000010"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    try {
+		${log}::debug "Setting I2C start condition"
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
+
+    proc set_i2c_stop_condition {} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b00000011"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    try {
+		${log}::debug "Setting I2C stop condition"
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }    
+
+    proc set_i2c_peripheral_power {setting} {
+	# Turn the I2C peripheral power on (1) or off (0)
+	#
+	# 0b0100<power><pullups><aux><cs>    
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b0100"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    if {$setting} {		
+		# Turn power on
+		${log}::debug "Enabling peripheral power"
+		append databits 1
+		dict set state pirate peripheral power 1
+	    } else {
+		# Turn power off
+		${log}::debug "Disabling peripheral power"
+		append databits 0
+		dict set state pirate peripheral power 0
+	    }
+	    append databits [dict get $state pirate peripheral pullups]
+	    append databits [dict get $state pirate peripheral auxpin]
+	    append databits [dict get $state pirate peripheral cspin]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
+
+    proc set_i2c_pullup_voltage {voltage} {
+	# Set the I2C pullup voltage.  This also turns peripheral
+	# power on.
+	#
+	# Arguments:
+	#   voltage -- 5 or 3.3
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b010100"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    # Not sure if this command should really turn the power on, but it does.
+	    dict set state pirate peripheral power 1
+	    if {[string match $voltage 5]} {		
+		# Set peripheral voltage to 5V
+		${log}::debug "Setting peripheral voltage to 5V"
+		append databits 10
+		dict set state pirate peripheral voltage 5
+	    } else {
+		# Set peripheral voltage to 3.3V
+		${log}::debug "Setting peripheral voltage to 3.3V"
+		append databits 01
+		dict set state pirate peripheral voltage 3.3
+	    }
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
+
     proc set_spi_speed {setting} {
 	# Set the SPI bitrate
 	# 0 -- 30 kHz
@@ -382,7 +495,7 @@ namespace eval pirate {
 	# Arguements:
 	#   setting -- 1 or 0
 	#
-	# # 0b0100<power><pullups><aux><cs>
+	# 0b0100<power><pullups><aux><cs>
 	global state
 	global log
 	set channel [dict get $state channel]
@@ -411,7 +524,46 @@ namespace eval pirate {
 	    ${log}::error "Must set bitbang.spi mode before using SPI"
 	    exit
 	}
-    }    
+    }
+
+    proc set_i2c_aux {setting} {
+	
+    }
+
+    proc set_i2c_pullups {setting} {
+	# Enable (1) or disable (0) the pullup resistors
+	#
+	# 0b0100<power><pullups><aux><cs>
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b0100"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    append databits [dict get $state pirate peripheral power]
+	    if {$setting} {
+		${log}::debug "Enabling I2C pullups"
+		append databits 1
+		dict set state pirate peripheral pullups 1
+	    } else {
+		${log}::debug "Disabling I2C pullups"
+		append databits 0
+		dict set state pirate peripheral pullups 0
+	    }
+	    append databits [dict get $state pirate peripheral auxpin]
+	    append databits [dict get $state pirate peripheral cspin]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+	
+    }
 
     proc transfer_spi_byte {data} {
 	global state
@@ -464,6 +616,60 @@ namespace eval pirate {
 	    }
 	} else {
 	    ${log}::error "Must set bitbang.spi mode before using SPI"
+	    exit
+	}
+    }
+
+    proc transfer_i2c_data {address byte_list} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	# We're going to send the data bytes plus the address
+	set bytes [expr [llength $byte_list] +1]
+	${log}::debug "Request to send [llength $byte_list] bytes over I2C"
+	set databits "0b0001"
+	append databits [dec2bin [expr $bytes - 1] 4]
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    # Send the bulk I2C write commmand
+	    pirate::send_bitbang_command $channel $databits
+	    # Send the address
+	    ${log}::debug "Sending address [format "0x%x" $address]"
+	    try {
+		puts -nonewline $channel [format %c $address]			
+		chan event $channel readable {set TIMEOUT ok}
+		after $pirate::character_delay_ms {set TIMEOUT watchdog}
+		vwait TIMEOUT
+		after cancel {set TIMEOUT watchdog}
+		# after $pirate::character_delay_ms
+		set return_data [chan read $channel 20]
+		set return_count [binary scan $return_data B8 returned_bitfield]
+		set returned_value [format %i 0b$returned_bitfield]
+		puts $returned_value
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	    # Send the payload
+	    try {
+		foreach byte $byte_list {
+		    puts -nonewline $channel [format %c $byte]
+		    chan event $channel readable {set TIMEOUT ok}
+		    after $pirate::character_delay_ms {set TIMEOUT watchdog}
+		    vwait TIMEOUT
+		    after cancel {set TIMEOUT watchdog}
+		    # after $pirate::character_delay_ms
+		    set return_data [chan read $channel 20]
+		    set return_count [binary scan $return_data B8 returned_bitfield]
+		    set returned_value [format %i 0b$returned_bitfield]
+		    puts $returned_value
+		}
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
 	    exit
 	}
     }
