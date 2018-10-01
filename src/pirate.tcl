@@ -620,7 +620,15 @@ namespace eval pirate {
 	}
     }
 
-    proc transfer_i2c_data {address byte_list} {
+    proc write_i2c_data {address byte_list} {
+	# Write up to 16 bytes to the specified address.  Note that
+	# this does not handle the start and stop conditions.  Not
+	# handling these allows writing more than 16 bytes with
+	# multiple calls to this function.
+	#
+	# Arguments:
+	#   address -- 7-bit I2C slave address
+	#   byte_list -- List of up to 16 bytes to write
 	global state
 	global log
 	set channel [dict get $state channel]
@@ -632,19 +640,11 @@ namespace eval pirate {
 	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
 	    # Send the bulk I2C write commmand
 	    pirate::send_bitbang_command $channel $databits
-	    # Send the address
-	    ${log}::debug "Sending address [format "0x%x" $address]"
+	    # Send the address formatted for writing
+	    ${log}::debug "Sending I2C address [format "0x%x" $address]"
 	    try {
-		puts -nonewline $channel [format %c $address]			
-		chan event $channel readable {set TIMEOUT ok}
-		after $pirate::character_delay_ms {set TIMEOUT watchdog}
-		vwait TIMEOUT
-		after cancel {set TIMEOUT watchdog}
-		# after $pirate::character_delay_ms
-		set return_data [chan read $channel 20]
-		set return_count [binary scan $return_data B8 returned_bitfield]
-		set returned_value [format %i 0b$returned_bitfield]
-		puts $returned_value
+		# We expect a return value of 0 for an acked byte
+		pirate::send_bitbang_command $channel [expr $address << 1] 0
 	    } trap {} {message opdict} {
 		puts "$message"
 		# exit
@@ -652,16 +652,8 @@ namespace eval pirate {
 	    # Send the payload
 	    try {
 		foreach byte $byte_list {
-		    puts -nonewline $channel [format %c $byte]
-		    chan event $channel readable {set TIMEOUT ok}
-		    after $pirate::character_delay_ms {set TIMEOUT watchdog}
-		    vwait TIMEOUT
-		    after cancel {set TIMEOUT watchdog}
-		    # after $pirate::character_delay_ms
-		    set return_data [chan read $channel 20]
-		    set return_count [binary scan $return_data B8 returned_bitfield]
-		    set returned_value [format %i 0b$returned_bitfield]
-		    puts $returned_value
+		    # We expect a return value of 0 for an acked byte
+		    pirate::send_bitbang_command $channel $byte 0
 		}
 		return
 	    } trap {} {message opdict} {

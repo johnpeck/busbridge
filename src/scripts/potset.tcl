@@ -20,12 +20,12 @@ pirate::set_i2c_speed 2
 # Enable I2C pullups
 pirate::set_i2c_pullups 1
 
-# Set pullup voltage to 3.3V
+# Set pullup voltage
 pirate::set_i2c_pullup_voltage 5
 
-pirate::set_i2c_start_condition
-pirate::transfer_i2c_data "0b01011000" [list 0x1 0xff]
-pirate::set_i2c_stop_condition
+# Write data to the pot with write_data
+# write_data <slave address> <pot number> <value>
+ad5252::write_data 0x2c 1 0xff
 
 # Schedule the end of the test
 set test_done false

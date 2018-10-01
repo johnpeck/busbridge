@@ -36,12 +36,10 @@ namespace eval ad5252 {
 	#   data -- 8-bit number
 	global state
 	global log
-	global TIMEOUT
-	if {![string is integer $data]} {
-	    set error_message "bargraph: attempt to write non-integer data"
-	    return -code error $error_message
-	}
 	set channel [dict get $state channel]
+	pirate::set_i2c_start_condition
+	pirate::write_i2c_data $slave_address [list $pot $data]
+	pirate::set_i2c_stop_condition
     }
     
 }
