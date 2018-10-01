@@ -55,13 +55,14 @@ namespace eval pirate {
 	global state
 	global log
 	global loglevel
-	${log}::debug "Going to raw bitbang mode from [dict get $state pirate mode] mode"
+	set hardware_mode [dict get $state pirate mode]
+	${log}::debug "Going to raw bitbang mode from $hardware_mode mode"
 	set channel [dict get $state channel]
-	if {[string match "bitbang" [dict get $state pirate mode]]} {
+	if {[string match "bitbang" $hardware_mode]} {
 	    # We're already in bitbang mode
 	    return
 	}
-	if {[string match "bitbang.spi" [dict get $state pirate mode]]} {
+	if {[string match "bitbang.spi" $hardware_mode]} {
 	    # We need to go back to raw bitbang mode.  Send 0x0 to do this.
 	    ${log}::debug "Setting raw bitbang mode"
 	    puts -nonewline $channel [format %c 0]
@@ -76,6 +77,22 @@ namespace eval pirate {
 		${log}::error "Failed to go from bitbang.spi to bitbang mode"
 		exit
 	    }
+	}
+	if {[lsearch [list "bitbang.spi" "bitbang.i2c"] $hardware_mode] >= 0} {
+	    # We need to go back to raw bitbang mode.  Send 0x0 to do this.
+	    ${log}::debug "Setting raw bitbang mode"
+	    puts -nonewline $channel [format %c 0]
+	    after 100
+	    set data [chan read $channel 20]
+	    if {[string first "BBIO1" $data] >= 0} {
+		# We've entered binary mode
+		${log}::debug "Entering raw bitbang mode"
+		dict set state pirate mode "bitbang"
+		return
+	    } else {
+		${log}::error "Failed to go from $hardware_mode to bitbang mode"
+		exit
+	    }  
 	}
 	# Set up binary mode by writing 0x0 over and over
 	foreach attempt [iterint 1 30] {
@@ -119,6 +136,31 @@ namespace eval pirate {
 	    ${log}::error "Failed to set bitbang.spi mode"
 	}
     }
+
+    proc set_bitbang.i2c_mode {} {
+	global state
+	global log
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    # We're already in bitbang.i2c mode
+	    return
+	}
+	if {![string match "bitbang" [dict get $state pirate mode]]} {
+	    # We need to be in bitbang mode to enter bitbang.spi mode
+	    ${log}::error "Attempt to enter bitbang.i2c mode when not in bitbang mode"
+	    exit
+	}
+	set channel [dict get $state channel]
+	puts -nonewline $channel [format %c 2]
+	after $pirate::character_delay_ms
+	set data [chan read $channel 20]
+	# Bus Pirate will return I2C1 if we've entered SPI mode
+	if {[string match "I2C1" $data]} {
+	    ${log}::debug "Entering bitbang.i2c mode"
+	    dict set state pirate mode "bitbang.i2c" 
+	} else {
+	    ${log}::error "Failed to set bitbang.i2c mode"
+	}
+    }    
 
     proc spi_peripheral_power {setting} {
 	# Turn the SPI peripheral power on or off
@@ -185,6 +227,32 @@ namespace eval pirate {
 	    exit
 	}
     }
+
+    proc set_i2c_speed {setting} {
+	# Set the I2C bitrate
+	# 0 -- 5 kHz
+	# 1 -- 50 kHz
+	# 2 -- 100 kHz
+	# 3 -- 400 kHz
+	global state
+	global log
+	set channel [dict get $state channel]
+	${log}::debug "Setting I2C speed to $setting"
+	set databits "0b011000"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    append databits [dec2bin $setting 2]
+	    try {
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before setting I2C speed"
+	    exit
+	}
+    }    
 
     proc set_pin_directions {} {
 	global state
@@ -413,6 +481,11 @@ namespace eval pirate {
 	    return True
 	}
 	if {[string match "bitbang.spi" $hardware_mode]} {
+	    # We need to go back into raw bitbang mode before going
+	    # back to HiZ
+	    pirate::set_bitbang_mode
+	}
+	if {[lsearch [list "bitbang.spi" "bitbang.i2c"] $hardware_mode] >= 0} {
 	    # We need to go back into raw bitbang mode before going
 	    # back to HiZ
 	    pirate::set_bitbang_mode

@@ -20,10 +20,6 @@ namespace eval connection {
 	    foreach entry [split [glob -nocomplain -directory /dev ttyACM*]] {
 		lappend aliaslist [file tail $entry]
 	    }
-	    # Add special device aliases
-	    foreach entry $special_connection_aliases {
-		lappend aliaslist $entry
-	    }
 	} elseif {[string equal [dict get $state thisos] "Darwin"]} {
 	    # Platform is OSX.  Look through /dev/tty.usbmodem and
 	    # /dev/tty.usbserial entries
@@ -90,6 +86,7 @@ namespace eval connection {
 	set node [get_node $alias]
 	if {[catch {set channel [open $node r+]}]} {
 	    # The port simply doesn't exist
+	    ${log}::debug "Could not open $alias for r+"
 	    set channel false
 	} else {
 	    # We opened the channel, which is a big deal.
@@ -153,11 +150,11 @@ namespace eval connection {
 	if {[string equal [dict get $state thisos] "Linux"]} {
 	    # Platform is Linux.  Create a /dev/ttyUSBx node name from a
 	    # ttyUSBx alias.
-	    set nodename /dev/$serial_port_alias
+	    set nodename /dev/$alias
 	} elseif {[string equal [dict get $state thisos] "Darwin"]} {
 	    # Platform is OSX. Create a /dev/tty.usbserialx node name from a
 	    # usbserialx alias. 
-	    set nodename /dev/tty.$serial_port_alias
+	    set nodename /dev/tty.usbserial$alias
 	} elseif {[string equal [dict get $state thisos] "Windows NT"]} {
 	    # Platform is Windows.  Create a \\.\COMx node name from a
 	    # comx alias.
@@ -194,7 +191,7 @@ namespace eval connection {
 	    set channel_data [chan read $channel $chars]
 	    set elapsed_time_ms [expr [clock milliseconds] - $start_time_ms]	    
 	    if {$elapsed_time_ms >= $timeout_ms} {
-		set error_message "Channel did not respond within timeout"
+		set error_message "Channel did not respond within $timeout_ms ms"
 		return -code error $error_message
 	    } 
 	}
