@@ -6,9 +6,18 @@
 # Driver files must be sourced with source_driver
 source_driver devices/ad5252.tcl
 
+source_driver devices/ltc2485.tcl
+
 
 try {
     ad5252::init    
+} trap {} {message optdict} {
+    ${log}::error $message
+    exit
+}
+
+try {
+    ltc2485::init    
 } trap {} {message optdict} {
     ${log}::error $message
     exit
@@ -21,7 +30,7 @@ pirate::set_i2c_speed 2
 pirate::set_i2c_pullups 1
 
 # Set pullup voltage
-pirate::set_i2c_pullup_voltage 5
+pirate::set_i2c_pullup_voltage 3.3
 
 # Write data to the pot with write_data
 # write_data <slave address> <pot number> <value>

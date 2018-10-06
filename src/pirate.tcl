@@ -665,6 +665,48 @@ namespace eval pirate {
 	    exit
 	}
     }
+
+    proc read_i2c_byte {address} {
+	# Reads a single byte from the I2C bus
+	#
+	# Arguments:
+	#   address -- 7-bit I2C slave address
+	global state
+	global log
+	set channel [dict get $state channel]
+	# We're going to send the data bytes plus the address
+	set bytes [expr [llength $byte_list] +1]
+	${log}::debug "Request to send [llength $byte_list] bytes over I2C"
+	set databits "0b0001"
+	append databits [dec2bin [expr $bytes - 1] 4]
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    # Send the bulk I2C write commmand
+	    pirate::send_bitbang_command $channel $databits
+	    # Send the address formatted for writing
+	    ${log}::debug "Sending I2C address [format "0x%x" $address]"
+	    try {
+		# We expect a return value of 0 for an acked byte
+		pirate::send_bitbang_command $channel [expr $address << 1] 0
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	    # Send the payload
+	    try {
+		foreach byte $byte_list {
+		    # We expect a return value of 0 for an acked byte
+		    pirate::send_bitbang_command $channel $byte 0
+		}
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		# exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
     
     proc set_hiz_mode {} {
 	global state
