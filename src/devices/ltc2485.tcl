@@ -25,7 +25,21 @@ namespace eval ltc2485 {
 	    }
 	}
 	return
-    }    
+    }
+
+    proc set_temperature_mode {slave_address} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	pirate::set_i2c_start_condition
+	# Address the slave for writing (w)
+	pirate::set_i2c_slave_address $slave_address w
+	set databits "0b00001000"
+	pirate::write_i2c_data [list $databits]
+	pirate::set_i2c_stop_condition
+	# We have to wait for at least 1 conversion to happen before
+	# reading data.
+    }
 
     proc write_data {slave_address pot data} {
 	# Write 8-bit data to the ad5252
@@ -43,11 +57,41 @@ namespace eval ltc2485 {
     }
 
     proc read_data {slave_address} {
+	# Return raw data from the LTC2485 ADC.  Issue a warning if the
+	# value is at a limit.
+	#
+	# Arguments:
+	#   address -- 7-bit I2C slave address
 	global state
 	global log
 	set channel [dict get $state channel]
 	pirate::set_i2c_start_condition
-	pirate::write_i2c_data $slave_address [list]
+	# Address the slave for reading (r)
+	pirate::set_i2c_slave_address $slave_address r
+	# Bytes are read in MSB first, so first offset is 3
+	set offset_list [list 3 2 1 0]
+	set sum 0
+	foreach offset $offset_list {
+	    set data [pirate::read_i2c_byte]
+	    if {$offset == 0} {
+		# This is the last byte to be read
+		pirate::send_i2c_nack
+	    } else {
+		pirate::send_i2c_ack
+	    }
+	    set sum [expr $sum + ($data << ($offset * 8))] 
+	}
+	pirate::set_i2c_stop_condition
+	check_limits $sum
+	return $sum
+    }
+
+    proc check_limits {adcval} {
+	global state
+	global log
+	if {$adcval == [expr 0b11000000 << 24]} {
+	    ${log}::warn "LTC2485 ADC at positive full scale"
+	}
     }
     
 }

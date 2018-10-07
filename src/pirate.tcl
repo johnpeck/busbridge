@@ -216,7 +216,7 @@ namespace eval pirate {
 	    exit
 	}
     }
-
+   
     proc set_i2c_stop_condition {} {
 	global state
 	global log
@@ -235,7 +235,48 @@ namespace eval pirate {
 	    ${log}::error "Must set bitbang.i2c mode before using I2C"
 	    exit
 	}
-    }    
+    }
+
+    proc send_i2c_ack {} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b00000110"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    try {
+		${log}::debug "Sending I2C ACK"
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
+
+    proc send_i2c_nack {} {
+	global state
+	global log
+	set channel [dict get $state channel]
+	set databits "0b00000111"
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    try {
+		${log}::debug "Sending I2C NACK"
+		pirate::send_bitbang_command $channel $databits
+		return
+	    } trap {} {message opdict} {
+		puts "$message"
+		exit
+	    }
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit
+	}
+    }
+    
 
     proc set_i2c_peripheral_power {setting} {
 	# Turn the I2C peripheral power on (1) or off (0)
@@ -620,11 +661,12 @@ namespace eval pirate {
 	}
     }
 
-    proc write_i2c_data {address byte_list} {
+    proc write_i2c_data {byte_list} {
 	# Write up to 16 bytes to the specified address.  Note that
-	# this does not handle the start and stop conditions.  Not
-	# handling these allows writing more than 16 bytes with
-	# multiple calls to this function.
+	# this does not handle the start and stop conditions, nor does
+	# it handle addressing the device for writing. Not handling
+	# these allows writing more than 16 bytes with multiple calls
+	# to this function.
 	#
 	# Arguments:
 	#   address -- 7-bit I2C slave address
@@ -633,22 +675,13 @@ namespace eval pirate {
 	global log
 	set channel [dict get $state channel]
 	# We're going to send the data bytes plus the address
-	set bytes [expr [llength $byte_list] +1]
+	set bytes [llength $byte_list]
 	${log}::debug "Request to send [llength $byte_list] bytes over I2C"
 	set databits "0b0001"
 	append databits [dec2bin [expr $bytes - 1] 4]
 	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
 	    # Send the bulk I2C write commmand
 	    pirate::send_bitbang_command $channel $databits
-	    # Send the address formatted for writing
-	    ${log}::debug "Sending I2C address [format "0x%x" $address]"
-	    try {
-		# We expect a return value of 0 for an acked byte
-		pirate::send_bitbang_command $channel [expr $address << 1] 0
-	    } trap {} {message opdict} {
-		puts "$message"
-		# exit
-	    }
 	    # Send the payload
 	    try {
 		foreach byte $byte_list {
@@ -666,45 +699,66 @@ namespace eval pirate {
 	}
     }
 
-    proc read_i2c_byte {address} {
-	# Reads a single byte from the I2C bus
+    proc set_i2c_slave_address {address rw} {
+	# Sends an I2C address byte formatted for either reading or writing
 	#
 	# Arguments:
 	#   address -- 7-bit I2C slave address
+	#   rw -- (r for reading, w for writing)
 	global state
 	global log
-	set channel [dict get $state channel]
-	# We're going to send the data bytes plus the address
-	set bytes [expr [llength $byte_list] +1]
-	${log}::debug "Request to send [llength $byte_list] bytes over I2C"
-	set databits "0b0001"
-	append databits [dec2bin [expr $bytes - 1] 4]
 	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    set channel [dict get $state channel]
+	    # We'll write a single byte -- the slave address with the
+	    # read bit set or cleared
+	    set bytes_to_write 1
+	    set databits "0b0001"
+	    # The bulk i2c write command is 4 bits of instruction
+	    # (0b0001) followed by 4 bits encoding the number of bytes
+	    # to be written.  0b0000 encodes 1 byte.
+	    append databits [dec2bin [expr $bytes_to_write - 1] 4]
 	    # Send the bulk I2C write commmand
 	    pirate::send_bitbang_command $channel $databits
-	    # Send the address formatted for writing
-	    ${log}::debug "Sending I2C address [format "0x%x" $address]"
-	    try {
-		# We expect a return value of 0 for an acked byte
-		pirate::send_bitbang_command $channel [expr $address << 1] 0
-	    } trap {} {message opdict} {
-		puts "$message"
-		# exit
-	    }
-	    # Send the payload
-	    try {
-		foreach byte $byte_list {
+	    # Send the address formatted for reading or writing
+	    if [string match $rw "r"] {
+		${log}::debug "Addressing I2C address [format "0x%x" $address] for reading"
+		try {
 		    # We expect a return value of 0 for an acked byte
-		    pirate::send_bitbang_command $channel $byte 0
+		    pirate::send_bitbang_command $channel [expr ($address << 1) | 1] 0
+		} trap {} {message opdict} {
+		    puts "$message"
+		    # exit
 		}
-		return
-	    } trap {} {message opdict} {
-		puts "$message"
-		# exit
+	    } else {
+		${log}::debug "Addressing I2C address [format "0x%x" $address] for writing"
+		try {
+		    # We expect a return value of 0 for an acked byte
+		    pirate::send_bitbang_command $channel [expr ($address << 1) | 0] 0
+		} trap {} {message opdict} {
+		    puts "$message"
+		    # exit
+		}
 	    }
 	} else {
 	    ${log}::error "Must set bitbang.i2c mode before using I2C"
 	    exit
+	}
+    }
+
+    proc read_i2c_byte {} {
+	# Read a single byte from the i2c bus
+	global state
+	global log
+	if {[string match "bitbang.i2c" [dict get $state pirate mode]]} {
+	    set channel [dict get $state channel]
+	    # The command to read a single byte is 0b00000100
+	    set databits "0b00000100"
+	    set read_data [pirate::send_bitbang_command $channel $databits *]
+	    ${log}::debug "Read $read_data from I2C bus"
+	    return $read_data
+	} else {
+	    ${log}::error "Must set bitbang.i2c mode before using I2C"
+	    exit  
 	}
     }
     

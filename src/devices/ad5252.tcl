@@ -38,7 +38,9 @@ namespace eval ad5252 {
 	global log
 	set channel [dict get $state channel]
 	pirate::set_i2c_start_condition
-	pirate::write_i2c_data $slave_address [list $pot $data]
+	# Address the slave for writing (w)
+	pirate::set_i2c_slave_address $slave_address w
+	pirate::write_i2c_data [list $pot $data]
 	pirate::set_i2c_stop_condition
     }
     

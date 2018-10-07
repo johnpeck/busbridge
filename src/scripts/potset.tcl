@@ -34,7 +34,12 @@ pirate::set_i2c_pullup_voltage 3.3
 
 # Write data to the pot with write_data
 # write_data <slave address> <pot number> <value>
-ad5252::write_data 0x2c 1 0xff
+ad5252::write_data 0x2c 1 0x0
+
+# Read from ltc2485 at 0x27
+ltc2485::set_temperature_mode 0x27
+after 1000
+puts "Read [format "0x%x" [ltc2485::read_data 0x27]] from ADC"
 
 # Schedule the end of the test
 set test_done false
