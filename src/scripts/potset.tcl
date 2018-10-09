@@ -23,6 +23,21 @@ try {
     exit
 }
 
+set Vref 2.5
+set pot_address 0x2c
+set ADC_address 0x27
+
+proc get_bridge_resistance {Vref leg_resistance_ohms Vadc} {
+    # Return the bridge resistance in ohms
+    #
+    # Arguments:
+    #   Vref -- Voltage over the entire bridge
+    #   leg_resistance_ohms -- Resistors on each side of the bridge resistor
+    #   Vadc -- Voltage measured over the bridge resistor
+    set bridge_resistance_ohms [expr (2 * $Vadc * $leg_resistance_ohms)/($Vref - $Vadc)]
+    return $bridge_resistance_ohms
+}
+
 # Set I2C speed to 100kHz
 pirate::set_i2c_speed 2
 
@@ -34,12 +49,15 @@ pirate::set_i2c_pullup_voltage 3.3
 
 # Write data to the pot with write_data
 # write_data <slave address> <pot number> <value>
-ad5252::write_data 0x2c 1 0x0
+ad5252::write_data $pot_address 1 0x0
 
 # Read from ltc2485 at 0x27
-ltc2485::set_temperature_mode 0x27
-after 1000
-puts "Read [format "0x%x" [ltc2485::read_data 0x27]] from ADC"
+set adc_value [ltc2485::read_data $ADC_address]
+puts "Read [format "0x%x" $adc_value] from ADC"
+set adc_volts [ltc2485::get_calibrated_voltage $Vref $adc_value]
+puts "This is [format "%0.3f" $adc_volts]V"
+set bridge_resistance_ohms [get_bridge_resistance $Vref 10000 $adc_volts]
+puts "This is [format "%0.3f" $bridge_resistance_ohms] ohms"
 
 # Schedule the end of the test
 set test_done false

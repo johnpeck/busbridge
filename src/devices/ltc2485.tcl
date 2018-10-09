@@ -39,6 +39,7 @@ namespace eval ltc2485 {
 	pirate::set_i2c_stop_condition
 	# We have to wait for at least 1 conversion to happen before
 	# reading data.
+	after 1000
     }
 
     proc write_data {slave_address pot data} {
@@ -92,6 +93,21 @@ namespace eval ltc2485 {
 	if {$adcval == [expr 0b11000000 << 24]} {
 	    ${log}::warn "LTC2485 ADC at positive full scale"
 	}
+    }
+
+    proc get_calibrated_voltage {Vref data} {
+	# Return a calibrated voltage
+	#
+	# Arguments:
+	#   Vref -- reference voltage
+	#   data -- output data
+	global log
+	# Only use the upper 31 bits
+	set masked_data [expr $data & (2**31-1)]
+	# The reference is divided into 31 bits in 2s compliment.  Full
+	# scale positive will be 2**30, and the full scale voltage is Vref/2
+	set Vin [expr (double($Vref)/(2**31)) * double($masked_data)]
+	return $Vin
     }
     
 }
