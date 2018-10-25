@@ -38,7 +38,8 @@ namespace eval ad5252 {
 	global log
 	set channel [dict get $state channel]
 	pirate::set_i2c_start_condition
-	# Address the slave for writing (w)
+	# Address the slave for writing (w).  This might fail if the
+	# slave isn't there, or for lots of reasons.
 	pirate::set_i2c_slave_address $slave_address w
 	pirate::write_i2c_data [list $pot $data]
 	pirate::set_i2c_stop_condition

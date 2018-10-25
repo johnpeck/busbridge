@@ -41,7 +41,6 @@ namespace eval pirate {
 	} else {
 	    set error_message "send_bitbang_command (channel) $data failed. "
 	    append error_message "Expected $expected, got $return_data ($returned_value)."
-	    ${log}::error $error_message
 	    return -code error $error_message
 	}
     }
@@ -726,8 +725,8 @@ namespace eval pirate {
 		    # We expect a return value of 0 for an acked byte
 		    pirate::send_bitbang_command $channel [expr ($address << 1) | 1] 0
 		} trap {} {message opdict} {
-		    puts "$message"
-		    # exit
+		    return -code error \
+			"Failed to address I2C device at $address for reading"
 		}
 	    } else {
 		${log}::debug "Addressing I2C address [format "0x%x" $address] for writing"
@@ -735,14 +734,15 @@ namespace eval pirate {
 		    # We expect a return value of 0 for an acked byte
 		    pirate::send_bitbang_command $channel [expr ($address << 1) | 0] 0
 		} trap {} {message opdict} {
-		    puts "$message"
-		    # exit
+		    return -code error \
+			"Failed to address I2C device at $address for writing"
 		}
 	    }
 	} else {
 	    ${log}::error "Must set bitbang.i2c mode before using I2C"
 	    exit
 	}
+	return -code ok
     }
 
     proc read_i2c_byte {} {
