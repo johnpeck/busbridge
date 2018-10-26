@@ -42,7 +42,7 @@ set adc_i2c_address 0x27
 # Merritt's thermistor reference voltage is 3V
 #
 # Folsom's bridge leg resistance is 2.5V
-set thermistor_reference_volts 2.5
+set thermistor_reference_volts 3.0
 
 # Merritt's bridge leg resistance is 150k
 #
@@ -81,12 +81,23 @@ proc dashline {width} {
 }
 
 # Set I2C speed to 100kHz
-pirate::set_i2c_speed 2
+# |---------+---------|
+# | Setting | Speed   |
+# |---------+---------|
+# |       0 | 5 kHz   |
+# |       1 | 50 kHz  |
+# |       2 | 100 kHz |
+# |       3 | 400 kHz |
+# |---------+---------|
+pirate::set_i2c_speed 0
 
 # Set pullup voltage
 #
 # Merrit takes a 3.3V I2C bus and translates it to 5V when sending it
 # to Lafayette.
+#
+# Note that I've used the 3.3V setting to talk to 5V devices with no
+# problems.
 pirate::set_i2c_pullup_voltage 3.3
 
 # Enable I2C pullups.  This also turns peripheral power on.
@@ -102,7 +113,7 @@ after 2000 {set test_done true}
 # Pot 1 is gain
 #
 # 0xff for unity gain
-# 0x0 for gain of about 10
+# 0x0 for gain of about 20
 try {
     ad5252::write_data $pot_i2c_address 1 0xff
     dict set test_dict pot_write_test result "pass"
