@@ -22,7 +22,7 @@ set revcode 1.0
 # critical
 # alert
 # emergency
-set loglevel warn
+set loglevel debug
 
 
 # Create a dictionary to keep track of global state
@@ -43,7 +43,7 @@ set state [dict create \
 ######################## Command line support ########################
 
 lappend auto_path [file join [pwd] lib/cmdline]
-package require cmdline
+package require -exact cmdline 1.5
 
 
 set options {
@@ -127,7 +127,7 @@ source module_tools.tcl
 # The logging system will use the console text widget for visual
 # logging.
 lappend auto_path [file join [pwd] lib/log]
-package require logger
+package require -exact logger 0.9.4
 source loggerconf.tcl
 ${log}::info [modinfo logger]
 
