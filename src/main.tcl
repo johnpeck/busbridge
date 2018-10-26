@@ -40,6 +40,36 @@ set state [dict create \
 	       serlog none
 	  ]
 
+######################## Command line support ########################
+
+lappend auto_path [file join [pwd] lib/cmdline]
+package require cmdline
+
+
+set options {
+
+}
+
+set usage "usage: $program_name \[options\] filename"
+
+try {
+    array set params [cmdline::getoptions argv $options $usage]
+} trap {CMDLINE USAGE} {msg o} {
+    # Trap the usage signal, print the message, and exit the application.
+    # Note: Other errors are not caught and passed through to higher levels!
+    puts $msg
+    exit
+}
+
+# After cmdline is done, argv will point to the last argument
+if {[llength $argv] == 1} {
+    set test_code $argv
+} else {
+    ${log}::error "No test script specified"
+    puts [cmdline::usage $options $usage]
+    exit
+}
+
 ##################### Bus Pirate state settings ######################
 
 # Overall mode
@@ -101,35 +131,10 @@ package require logger
 source loggerconf.tcl
 ${log}::info [modinfo logger]
 
-######################## Command line support ########################
-
-lappend auto_path [file join [pwd] lib/cmdline]
-package require cmdline
+# We have to report on the cmdline module after the logger is set up.
+# We have to start the command line handling before the logger is set
+# up.
 ${log}::info [modinfo cmdline]
-
-set options {
-
-}
-
-set usage "usage: $program_name \[options\] filename"
-
-try {
-    array set params [cmdline::getoptions argv $options $usage]
-} trap {CMDLINE USAGE} {msg o} {
-    # Trap the usage signal, print the message, and exit the application.
-    # Note: Other errors are not caught and passed through to higher levels!
-    puts $msg
-    exit
-}
-
-# After cmdline is done, argv will point to the last argument
-if {[llength $argv] == 1} {
-    set test_code $argv
-} else {
-    ${log}::error "No test script specified"
-    puts [cmdline::usage $options $usage]
-    exit
-}
 
 
 proc source_script {file args} {
