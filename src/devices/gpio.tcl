@@ -1,8 +1,8 @@
 # Hey Emacs, use -*- Tcl -*- mode
 
-# General-purpose output (GPO) pin driver
+# General-purpose output (GPIO) pin driver
 
-namespace eval gpo {
+namespace eval gpio {
 
     proc init {} {
 	# Set the pins to be outputs and initialize their values.
@@ -40,7 +40,7 @@ namespace eval gpo {
 	global log
 	global TIMEOUT
 	if {![string is integer $data]} {
-	    set error_message "gpo: attempt to write non-integer data"
+	    set error_message "gpio: attempt to write non-integer data"
 	    return -code error $error_message
 	}
 	set channel [dict get $state channel]

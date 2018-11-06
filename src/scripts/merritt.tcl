@@ -80,7 +80,7 @@ proc dashline {width} {
     return $dashline
 }
 
-# Set I2C speed to 100kHz
+# Set I2C speed
 # |---------+---------|
 # | Setting | Speed   |
 # |---------+---------|
@@ -89,7 +89,7 @@ proc dashline {width} {
 # |       2 | 100 kHz |
 # |       3 | 400 kHz |
 # |---------+---------|
-pirate::set_i2c_speed 0
+pirate::set_i2c_speed 2
 
 # Set pullup voltage
 #
@@ -125,13 +125,14 @@ try {
 
 after 100
 
-# Pot 3 is offset
+# Pot 3 is offset.  Set this higher to move the output more
+# positively.
 #
 # 0x0 for +3.6V
 # 0x7f for ~0V
 # 0xff for -3.6V
 try {
-    ad5252::write_data $pot_i2c_address 3 0x80    
+    ad5252::write_data $pot_i2c_address 3 0x8c    
 } trap {} {message optdict} {
     ${log}::error $message
     ${log}::error "Could not write to digital pot at $pot_i2c_address"
@@ -148,7 +149,7 @@ try {
     dict set test_dict adc_read_test result "pass"
 } trap {} {message optdict} {
     ${log}::error $message
-    ${log}::error "Could not read from ADC at $adc_i2c_address"
+    ${log}::error "Could not read from ADC at $adc_i2c_address.  Is 3.3V power applied?"
     set adc_volts 0
     dict set test_dict adc_read_test result "fail"
 }
