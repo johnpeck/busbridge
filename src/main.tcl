@@ -22,7 +22,7 @@ set revcode 1.0
 # critical
 # alert
 # emergency
-set loglevel info
+set loglevel debug
 
 
 # Create a dictionary to keep track of global state
@@ -65,7 +65,6 @@ try {
 if {[llength $argv] == 1} {
     set test_code $argv
 } else {
-    ${log}::error "No test script specified"
     puts [cmdline::usage $options $usage]
     exit
 }
