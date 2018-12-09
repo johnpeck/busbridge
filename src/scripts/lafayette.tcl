@@ -43,13 +43,6 @@ after 100
 #
 ad5252::write_data $pot_i2c_address 3 0x80
 
-
-
-
-
-
-
-
 # Start the event loop.  It will end when the test_done variable is
 # set.
 vwait test_done

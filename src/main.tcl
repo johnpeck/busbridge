@@ -22,7 +22,7 @@ set revcode 1.0
 # critical
 # alert
 # emergency
-set loglevel debug
+set loglevel info
 
 
 # Create a dictionary to keep track of global state
@@ -134,6 +134,10 @@ ${log}::info [modinfo logger]
 # We have to start the command line handling before the logger is set
 # up.
 ${log}::info [modinfo cmdline]
+
+# Add plotchart, but don't require it.  Only scripts that use Tk
+# should require Tk stuff.
+lappend auto_path [file join [pwd] lib/tklib/modules/plotchart]
 
 
 proc source_script {file args} {
