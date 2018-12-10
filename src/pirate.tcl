@@ -5,13 +5,15 @@ namespace eval pirate {
     variable character_delay_ms 10
     
     proc init {channel} {
-	connection::get_unsolicited $channel 100
+	set data [connection::get_unsolicited $channel 100]
+	puts $data
 	sendcmd $channel ""
-	connection::get_unsolicited $channel 100
+	set data [connection::get_unsolicited $channel 100]
+	puts $data
     }
 
     proc sendcmd {channel data} {
-	puts -nonewline $channel "$data\r"
+	puts $channel "$data"
 	after 100
     }
 

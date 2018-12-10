@@ -9,14 +9,16 @@ ${log}::info [modinfo Plotchart]
 canvas .plot_canvas -background white -width 500 -height 400
 pack   .plot_canvas -fill both
 
+tkwait visibility .plot_canvas
+
 
 # Create the plot with its x- and y-axes
 
 # createXYPlot widget xaxis yaxis
 # axis specification: {min max step}
-set plot_object [Plotchart::createXYPlot .plot_canvas \
-		     {0.0 100.0 10.0} {-2 2 1}]
-$plot_object title "Data series"
+# set plot_object [Plotchart::createXYPlot .plot_canvas \
+# 		     {0.0 100.0 10.0} {-5 5 1}]
+# $plot_object title "Data series"
 
 # Driver files must be sourced with source_driver
 
@@ -106,69 +108,71 @@ after 1000
 
 # Schedule the end of the test
 set test_done false
-after 2000 {set test_done true}
+after 5000 {set test_done true}
+set times_list [list]
+set time_counter 0
+set volts_list [list]
 
+proc update_plot {} {
+    # Read from the thermistor ADC
+    global log
+    global volts_list
+    global adc_i2c_address
+    global times_list
+    global time_counter
+    global thermistor_reference_volts
+    global thermistor_leg_resistance_ohms
+    set sc_length 5
 
-# Read from the thermistor ADC
-try {
-    set adc_value [ltc2485::read_data $adc_i2c_address]
-    puts "Read [format "0x%x" $adc_value] from ADC"
-    set adc_volts [ltc2485::get_calibrated_voltage $thermistor_reference_volts $adc_value]
-    set outstr "This is [format "%0.3f" $adc_volts]V "
-    append outstr "with a [format "%0.3f" $thermistor_reference_volts]V reference"
-    puts $outstr
-    dict set test_dict adc_read_test result "pass"
-} trap {} {message optdict} {
-    ${log}::error $message
-    ${log}::error "Could not read from ADC at $adc_i2c_address.  Is 3.3V power applied?"
-    set adc_volts 0
-    dict set test_dict adc_read_test result "fail"
-}
-
-# Merritt has a leg resistance of 150k
-set bridge_resistance_ohms [get_bridge_resistance \
-				$thermistor_reference_volts \
-				$thermistor_leg_resistance_ohms $adc_volts]
-puts "This is [format "%0.3f" $bridge_resistance_ohms] ohms"
-
-
-# Start the event loop.  It will end when the test_done variable is
-# set.
-vwait test_done
-
-########################### Report results ###########################
-
-
-dict set column_dict test_name width 50
-dict set column_dict test_name title "Test"
-dict set column_dict test_result width 10
-dict set column_dict test_result title "Result"
-
-foreach column [dict keys $column_dict] {
-    append format_string "%-*s "
-    lappend header_list "[dict get $column_dict $column width] "
-    lappend header_list "[dict get $column_dict $column title] "
-}
-
-set header [format "$format_string" {*}$header_list]
-puts ""
-puts $header
-puts [dashline [string length $header]]
-
-
-foreach test [dict keys $test_dict] {
-    set description [dict get $test_dict $test description]
-    set result [dict get $test_dict $test result]
-    set line_list [list]
-    foreach column [dict keys $column_dict] {
-	lappend line_list "[dict get $column_dict $column width] "
-	if {[string match $column test_name]} {
-	    lappend line_list $description
-	}
-	if {[string match $column test_result]} {
-	    lappend line_list $result
-	}
+    try {
+	set adc_value [ltc2485::read_data $adc_i2c_address]
+	puts "Read [format "0x%x" $adc_value] from ADC"
+	set adc_volts [ltc2485::get_calibrated_voltage $thermistor_reference_volts $adc_value]
+	set outstr "This is [format "%0.3f" $adc_volts]V "
+	append outstr "with a [format "%0.3f" $thermistor_reference_volts]V reference"
+	puts $outstr
+	# Merritt has a leg resistance of 150k
+	set bridge_resistance_ohms [get_bridge_resistance \
+					$thermistor_reference_volts \
+					$thermistor_leg_resistance_ohms $adc_volts]
+	puts "This is [format "%0.3f" $bridge_resistance_ohms] ohms"
+	
+    } trap {} {message optdict} {
+	${log}::error $message
+	${log}::error "Could not read from ADC at $adc_i2c_address.  Is 3.3V power applied?"
+	set test_done true
     }
-    puts [format "$format_string" {*}$line_list]
+    lappend volts_list $adc_volts
+    if {[llength $volts_list] > $sc_length} {
+	set sc_volts_list [lrange $volts_list end-$sc_length end]
+    } else {
+	set sc_volts_list [list 1 1 1 1 1]
+    }
+    lappend times_list $time_counter
+    if {[llength $times_list] > $sc_length} {
+	set sc_times_list [lrange $times_list end-$sc_length end]
+    } else {
+	set sc_times_list [iterint 0 $sc_length]
+    }
+    set plot_object [get_plot_object \
+			 [lindex $sc_times_list 0] \
+			 [lindex $sc_times_list end] \
+			 0 3]
+    $plot_object deletedata
+    $plot_object plotlist series1 $sc_times_list $sc_volts_list 
+    incr time_counter
+    after 1000 update_plot
 }
-puts ""
+
+proc get_plot_object {xmin xmax ymin ymax} {
+    .plot_canvas delete "all"
+    set plot_object [::Plotchart::createXYPlot .plot_canvas "$xmin $xmax 1" "$ymin $ymax 0.5"]
+    # Configure the plots before you use them
+    $plot_object dataconfig baseline -type "line" -color "red"
+    $plot_object dataconfig series1 -type "line" -color "blue"
+    $plot_object title "Data series"  
+    return $plot_object
+}
+
+update_plot
+tkwait window .plot_canvas 

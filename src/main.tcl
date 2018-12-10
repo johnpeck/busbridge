@@ -22,7 +22,7 @@ set revcode 1.0
 # critical
 # alert
 # emergency
-set loglevel info
+set loglevel debug
 
 
 # Create a dictionary to keep track of global state
@@ -30,12 +30,14 @@ set loglevel info
 #   program_name --  Name of this program (for naming the window)
 #   program_version -- Version of this program
 #   thisos  -- Name of the os this program is running on
+#   channel -- The Tcl chan channel used to communicate
 #   exelog -- The execution log filename
 #   serlog -- The serial output log filename
 set state [dict create \
 	       program_name $program_name \
 	       program_version $revcode \
 	       thisos $tcl_platform(os) \
+	       channel "none" \
 	       exelog none \
 	       serlog none
 	  ]
