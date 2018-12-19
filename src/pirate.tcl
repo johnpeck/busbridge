@@ -13,7 +13,7 @@ namespace eval pirate {
     }
 
     proc sendcmd {channel data} {
-	puts $channel "$data"
+	puts -nonewline $channel "$data\r"
 	after 100
     }
 
