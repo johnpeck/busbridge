@@ -41,14 +41,14 @@ font create value_font -family TkFixedFont -size 30
 foreach designator [array names i2c_address_array] {
     # Create the frame
     set address $i2c_address_array($designator)
-    ttk::labelframe .thermistor(${designator}) \
+    ttk::labelframe .thermistor_frame_array(${designator}) \
 	-text "Thermistor $designator (${address})" \
 	-labelanchor n \
 	-borderwidth 1 \
 	-relief sunken
 
     # Create the label
-    ttk::label .thermistor($designator).thermistor_value \
+    ttk::label .thermistor_frame_array($designator).thermistor_value_label \
 	-text "Ready" \
 	-font value_font \
 	-width 36 \
@@ -60,11 +60,13 @@ foreach designator [array names i2c_address_array] {
 set rownum 0
 
 foreach designator [lsort [array names i2c_address_array]] {
-    grid config .thermistor($designator) -column 0 -row $rownum \
+    # Place the frame
+    grid config .thermistor_frame_array($designator) -column 0 -row $rownum \
 	-columnspan 1 -rowspan 1 \
 	-padx 5 -pady 5 \
 	-sticky "snew"
-    pack .thermistor($designator).thermistor_value \
+    # Place the label inside the frame
+    pack .thermistor_frame_array($designator).thermistor_value_label \
 	-padx 5 -pady 5 \
 	-expand 1
 
@@ -93,15 +95,16 @@ set thermistor_reference_volts 3.0
 # Palmdale's bridge leg resistance is 62k
 set thermistor_leg_resistance_ohms 62000
 
+# Steinhart-Hart coefficients
+#
 # With a 62k bridge leg resistance, a 3V reference, and a 100k
 # thermistor, the thermistor current will be 13uA.  Use the 10uA
 # values.
-array set thermistor_shh {
+array set thermistor_shh_array {
     A 8.2458e-4
     B 2.0913e-4
     C 7.9780e-8
 }
-
 
 ############################### Tests ################################
 
@@ -122,10 +125,10 @@ proc get_bridge_resistance {Vref leg_resistance_ohms Vadc} {
 
 proc get_temperature_c {resistance} {
     # Return the calculated temperature
-    global thermistor_shh
-    set temperature_k [expr 1/($thermistor_shh(A) + \
-				   $thermistor_shh(B) * log($resistance) + \
-				   $thermistor_shh(C) * (log($resistance))**3)]
+    global thermistor_shh_array
+    set temperature_k [expr 1/($thermistor_shh_array(A) + \
+				   $thermistor_shh_array(B) * log($resistance) + \
+				   $thermistor_shh_array(C) * (log($resistance))**3)]
     set temperature_c [expr $temperature_k - 273]
     return $temperature_c
 }
@@ -172,7 +175,7 @@ set times_list [list]
 set time_counter 0
 set volts_list [list]
 
-proc update_label {} {
+proc update_labels {} {
     # Read from the thermistor ADC
     global log
     global volts_list
@@ -189,23 +192,27 @@ proc update_label {} {
 	foreach designator [array names i2c_address_array] {
 	    set adc_value_array($designator) \
 		[ltc2485::read_data $i2c_address_array($designator)]
-	    puts "Read [format "0x%x" $adc_value_array($designator)] from ADC"
+	    ${log}::debug "Read [format "0x%x" $adc_value_array($designator)] from ADC"
 	    set adc_volts_array($designator) \
 		[ltc2485::get_calibrated_voltage \
 		     $thermistor_reference_volts $adc_value_array($designator)]
 	    set outstr "This is [format "%0.3f" $adc_volts_array($designator)]V "
 	    append outstr "with a [format "%0.3f" $thermistor_reference_volts]V reference"
-	    puts $outstr
+	    ${log}::debug $outstr
 	    set bridge_resistance_ohms_array($designator) \
 		[get_bridge_resistance $thermistor_reference_volts \
 		     $thermistor_leg_resistance_ohms \
 		     $adc_volts_array($designator)]
-	    set temperature_c($designator) \
+	    set temperature_c_array($designator) \
 		[get_temperature_c $bridge_resistance_ohms_array($designator)]
-	    puts "This is [format "%0.3f" $bridge_resistance_ohms_array($designator)] ohms"
-	    set label_string "[format "%0.3f" $bridge_resistance_ohms_array($designator)] ohms = "
-	    append label_string "[format "%0.3f" $temperature_c($designator)] C"
-	    .thermistor($designator).thermistor_value configure -text $label_string
+	    set outstr "This is "
+	    append outstr "[format "%0.3f" $bridge_resistance_ohms_array($designator)] ohms"
+	    ${log}::debug $outstr
+	    set label_string "[format "%0.3f" $bridge_resistance_ohms_array($designator)] "
+	    append label_string " ohms = "
+	    append label_string "[format "%0.3f" $temperature_c_array($designator)] C"
+	    .thermistor_frame_array($designator).thermistor_value_label \
+		configure -text $label_string
 	    after 100
 	}
 
@@ -214,14 +221,11 @@ proc update_label {} {
 	${log}::error "Could not read from ADC.  Is 3.3V power applied?"
 	set test_done true
     }
-    # set label_string "[format "%0.3f" $bridge_resistance_ohms_array(p1)] ohms = "
-    # append label_string "[format "%0.3f" 100.5] C"
-    # .thermistor(p1).thermistor_value configure -text $label_string
 
-    after 1000 update_label
+    after 1000 update_labels
 }
 
-update_label
+update_labels
 
 # Exit the script when the window is killed
 tkwait window .

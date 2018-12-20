@@ -22,7 +22,7 @@ set revcode 1.0
 # critical
 # alert
 # emergency
-set loglevel debug
+set loglevel info
 
 
 # Create a dictionary to keep track of global state

@@ -52,8 +52,8 @@ linux_x86_32_kit = "wraptools/tclkit-8.6.3-rhel5-ix86"
 linux_amd64_kit = "wraptools/tclkit-8.6.4-linux-amd64"
 macosx_amd64_kit = "wraptools/tclkit-8.6.4-macosx-amd64"
 
-w32kit = wraptools/tclkitsh-8.6.3-win32-ix86.exe
-w64kit = "wraptools/tclkitsh-8.6.3-win32-x86_64.exe"
+w32kit = "wraptools/tclkit-8.6.3-win32-ix86.exe"
+w64kit = $(w32kit)
 
 # Download Starkit Developer Extension from http://equi4.com/pub/sk/
 SDX = "wraptools/sdx.kit"
