@@ -6,7 +6,7 @@ progname = busbridge
 # I'll use semantic versioning, so that each version should have
 # major, minor, and patch codes.
 
-revcode := 1.0.1
+revcode := 1.0.2
 
 # Path to the TCL files making up the source
 source_path = src
