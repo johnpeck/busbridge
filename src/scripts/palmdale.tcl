@@ -8,9 +8,7 @@ source_driver devices/ltc2485.tcl
 
 package require Tk
 
-# Create a window
-# toplevel .palmdale
-
+# Change the root window title
 wm title . "Palmdale (90032)"
 
 tkwait visibility .
@@ -165,12 +163,7 @@ pirate::set_i2c_pullup_voltage 5V
 # Enable I2C pullups.  This also turns peripheral power on.
 pirate::set_i2c_pullups 1
 
-# Need to wait for power to come on
-after 1000
 
-# Schedule the end of the test
-set test_done false
-after 5000 {set test_done true}
 set times_list [list]
 set time_counter 0
 set volts_list [list]
@@ -225,7 +218,8 @@ proc update_labels {} {
     after 1000 update_labels
 }
 
-update_labels
+# Wait 1s for power to come on
+after 1000 update_labels
 
 # Exit the script when the window is killed
 tkwait window .
