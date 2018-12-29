@@ -39,8 +39,8 @@ proc log.send_to_file {txt} {
 }
 
 # Send log messages to wherever they need to go
-proc log_manager {lvl txt} {
-    set msg "\[[clock format [clock seconds]]\] \[ $lvl \] $txt"
+proc log_manager {level text} {
+    set msg "\[[clock format [clock seconds]]\] \[ $level \] $text"
     # The logfile output
     log.send_to_file $msg
     
@@ -59,31 +59,82 @@ proc log_manager {lvl txt} {
     #  7 -- white
     
     # The console logger output.
-    if {[string compare $lvl debug] == 0} {
-	# Debug level logging
-    	set msg "\[\033\[34m $lvl \033\[0m\] $txt"
-	puts $msg
-    }
-    if {[string compare $lvl info] == 0} {
-	# Info level logging
-    	set msg "\[\033\[32m $lvl \033\[0m\] $txt"
-	puts $msg
-    }
-    if {[string compare $lvl warn] == 0} {
-	# Warn level logging
-    	set msg "\[\033\[33m $lvl \033\[0m\] $txt"
-	puts $msg
-    }
-    if {[string compare $lvl error] == 0} {
-	# Error level logging
-    	set msg "\[\033\[31m $lvl \033\[0m\] $txt"
-	puts $msg
-    }
 
+    # For graphical logging, this is the column where the level string
+    # (like debug, warning, etc.) starts
+    set tag_position 13
+    if {[string compare $level debug] == 0} {
+	# Debug level logging
+    	set msg "\[\033\[34m $level \033\[0m\] $text"
+	puts $msg
+	if [namespace exists root] {
+	    # The root Tk window has been created
+	    # Add a timestamp to the message for the datafile
+	    set timestamp [clock format [clock seconds] -format %T]
+	    set message "\[${timestamp}\] \[ $level \] $text \n"
+	    .message_frame.text_frame.text insert end $message
+	    .message_frame.text_frame.text tag add debugtag \
+		"insert linestart -1 lines +$tag_position chars" \
+		"insert linestart -1 lines \
+		+[expr $tag_position + [string length $level]] chars"
+	    .message_frame.text_frame.text tag configure debugtag -foreground blue
+	}
+    }
+    if {[string compare $level info] == 0} {
+	# Info level logging
+    	set msg "\[\033\[32m $level \033\[0m\] $text"
+	puts $msg
+	if [namespace exists root] {
+	    # The root Tk window has been created
+	    # Add a timestamp to the message for the datafile
+	    set timestamp [clock format [clock seconds] -format %T]
+	    set message "\[${timestamp}\] \[ $level \] $text \n"
+	    .message_frame.text_frame.text insert end $message
+	    .message_frame.text_frame.text tag add infotag \
+		"insert linestart -1 lines +$tag_position chars" \
+		"insert linestart -1 lines \
+		+[expr $tag_position + [string length $level]] chars"
+	    .message_frame.text_frame.text tag configure infotag -foreground green
+	}
+    }
+    if {[string compare $level warn] == 0} {
+	# Warn level logging
+    	set msg "\[\033\[33m $level \033\[0m\] $text"
+	puts $msg
+	if [namespace exists root] {
+	    # The root Tk window has been created
+	    # Add a timestamp to the message for the datafile
+	    set timestamp [clock format [clock seconds] -format %T]
+	    set message "\[${timestamp}\] \[ $level \] $text \n"
+	    .message_frame.text_frame.text insert end $message
+	    .message_frame.text_frame.text tag add warntag \
+		"insert linestart -1 lines +$tag_position chars" \
+		"insert linestart -1 lines \
+		+[expr $tag_position + [string length $level]] chars"
+	    .message_frame.text_frame.text tag configure warntag -foreground orange
+	}
+    }
+    if {[string compare $level error] == 0} {
+	# Error level logging
+    	set msg "\[\033\[31m $level \033\[0m\] $text"
+	puts $msg
+	if [namespace exists root] {
+	    # The root Tk window has been created
+	    # Add a timestamp to the message for the datafile
+	    set timestamp [clock format [clock seconds] -format %T]
+	    set message "\[${timestamp}\] \[ $level \] $text \n"
+	    .message_frame.text_frame.text insert end $message
+	    .message_frame.text_frame.text tag add errortag \
+		"insert linestart -1 lines +$tag_position chars" \
+		"insert linestart -1 lines \
+		+[expr $tag_position + [string length $level]] chars"
+	    .message_frame.text_frame.text tag configure errortag -foreground red
+	}
+    }
 }
 
 # Define the callback function for the logger for each log level
-foreach lvl [logger::levels] {
-    interp alias {} log_manager_$lvl {} log_manager $lvl
-    ${log}::logproc $lvl log_manager_$lvl
+foreach level [logger::levels] {
+    interp alias {} log_manager_$level {} log_manager $level
+    ${log}::logproc $level log_manager_$level
 }
