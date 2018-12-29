@@ -60,7 +60,7 @@ try {
     # Trap the usage signal, print the message, and exit the application.
     # Note: Other errors are not caught and passed through to higher levels!
     puts $msg
-    exit
+    # exit
 }
 
 # After cmdline is done, argv will point to the last argument
@@ -68,7 +68,7 @@ if {[llength $argv] == 1} {
     set test_code $argv
 } else {
     puts [cmdline::usage $options $usage]
-    exit
+    # exit
 }
 
 ##################### Bus Pirate state settings ######################
@@ -232,11 +232,12 @@ foreach alias [connection::get_potential_aliases] {
 	${log}::debug "Alias $alias can be configured"
 	dict set state channel $channel
 	dict set state alias $alias
-	# Set up unocom to accept commands
+	# Clear out the channel, preparing to check for a Bus Pirate
 	pirate::init $channel
-	# Ask for identity
+	# The Bus Pirate should go into its interactive mode upon
+	# connection, responding to a carriage return with a HiZ>
+	# prompt.
         pirate::sendcmd $channel ""
-
 	# Read the response
 	set data [pirate::readline $channel]
 	${log}::debug "Response to carriage return was $data"
@@ -246,11 +247,11 @@ foreach alias [connection::get_potential_aliases] {
 	    ${log}::info "Successful connection to Bus Pirate at $alias"
 	    dict set state pirate mode "hiz"
 	    break
-	    
 	}
     } else {
-	dict set state channel "none"
-	dict set state alias "none"
+	# If there's no Bus Pirate present, connect to the simulator
+	dict set state channel "simulator"
+	dict set state alias "simulator"
     }
 }
 if [string equal [dict get $state channel] "none"] {
@@ -258,26 +259,42 @@ if [string equal [dict get $state channel] "none"] {
     exit
 }
 
-set version_info [pirate::get_version]
-if [pirate::version_ok $version_info] {
-    # Keep going -- hardware and firmware are ok
-} else {
-    puts "Found [pirate::get_hw_version $version_info], expected something in $bus_pirate_qualified_hw_list"
-    puts "Found [pirate::get_fw_version $version_info], expected something in $bus_pirate_qualified_fw_list"
-    exit
+if { ![string equal [dict get $state channel] "simulator"] } {
+    # Check for a useful version of firmware on the Bus Pirate hardware
+    set version_info [pirate::get_version]
+    if [pirate::version_ok $version_info] {
+	# Keep going -- hardware and firmware are ok
+    } else {
+	puts "Found [pirate::get_hw_version $version_info],\
+	expected something in $bus_pirate_qualified_hw_list"
+	puts "Found [pirate::get_fw_version $version_info],\
+	expected something in $bus_pirate_qualified_fw_list"
+	exit
+    }  
 }
 
 
-# All of the test scripts will use bitbang mode
-pirate::set_bitbang_mode
+if { ![string equal [dict get $state channel] "simulator"] } {
+    # If we're not in the simulator, we'll need to get the Bus Pirate
+    # into bitbang mode.
+    pirate::set_bitbang_mode
+}
 
 # Source the test script
-source $test_code
+# source palmdale.tcl
 
-# We need to go back to HiZ mode before we're done, otherwise USB will
-# be locked up.
-pirate::set_hiz_mode
-chan close $channel
+# Source the main window
+source root.tcl
+
+if { ![string equal [dict get $state channel] "simulator"] } {
+    # We need to go back to HiZ mode before we're done, otherwise USB will
+    # be locked up.    
+    pirate::set_hiz_mode
+    chan close $channel    
+}
+
+
+
 
 
 
