@@ -31,6 +31,7 @@ set loglevel debug
 #   program_version -- Version of this program
 #   thisos  -- Name of the os this program is running on
 #   channel -- The Tcl chan channel used to communicate
+#   script_file -- The Tcl script to run on the Bus Pirate
 #   exelog -- The execution log filename
 #   serlog -- The serial output log filename
 set state [dict create \
@@ -38,6 +39,7 @@ set state [dict create \
 	       program_version $revcode \
 	       thisos $tcl_platform(os) \
 	       channel "none" \
+	       script_file "none" \
 	       exelog none \
 	       serlog none
 	  ]
@@ -223,7 +225,16 @@ ${log}::warn "Warn message"
 
 source connection.tcl
 source pirate.tcl
-${log}::debug "Potential connection nodes: [connection::get_potential_aliases]"
+
+# List of potential aliases (COM1, COM2, ttyACM0, etc)
+set potential_alias_list [connection::get_potential_aliases]
+${log}::debug "Potential connection nodes: $potential_alias_list"
+
+if {[llength $potential_alias_list] == 0} {
+    # There are no possible connections.  Connect to the simulator.
+    dict set state channel "simulator"
+    dict set state alias "simulator"
+}
 
 foreach alias [connection::get_potential_aliases] {
     set channel [connection::is_available $alias "115200,n,8,1"]

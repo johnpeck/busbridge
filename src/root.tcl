@@ -74,6 +74,49 @@ pack .channel_frame.connection_frame \
 pack .channel_frame.connection_frame.port_label \
     -padx $root::widget_pad -pady $root::widget_pad
 
+############################ Script frame ############################
+
+# Configure all the widgets
+source script_box.tcl
+
+incr grid_row_number
+
+grid config .script_frame -column 0 -row $grid_row_number \
+    -columnspan 1 -rowspan 1 \
+    -padx $root::widget_pad -pady $root::widget_pad \
+    -sticky "snew"
+
+pack .script_frame.load_button \
+    -padx $root::widget_pad -pady $root::widget_pad
+
+pack .script_frame.script_label \
+    -padx $root::widget_pad -pady $root::widget_pad
+
+########################### Terminal frame ###########################
+
+# Configure all the widgets
+source terminal_box.tcl
+
+incr grid_row_number
+
+grid config .terminal_frame -column 0 -row $grid_row_number \
+    -columnspan 1 -rowspan 1 \
+    -padx $root::widget_pad -pady $root::widget_pad \
+    -sticky "snew"
+
+# The text frame should expand to the width of the terminal frame.  Use
+# the fill option with the packer to set this up.
+pack .terminal_frame.text_frame \
+    -padx $root::widget_pad -pady $root::widget_pad \
+    -expand true \
+    -fill both
+pack .terminal_frame.text_frame.scrollbar -fill y -side right
+pack .terminal_frame.text_frame.text \
+    -fill x -side bottom -fill both -expand true
+
+# Allow the terminal frame to expand
+grid rowconfigure . $grid_row_number -weight 1
+
 ########################### Message frame ############################
 
 # Configure all the widgets
