@@ -6,12 +6,17 @@
 # Source the LTC2485 thermistor reader driver
 source_driver devices/ltc2485.tcl
 
-package require Tk
+# Create a window for Palmdale
+toplevel .script
+menu .script.menubar
+.script configure -menu .script.menubar -height 150
 
-# Change the root window title
-wm title . "Palmdale (90032)"
 
-tkwait visibility .
+wm title .script "Palmdale (90032)"
+
+# Raise the window when it's done being configured
+after 100 raise .script
+
 
 namespace eval palmdale {
 
@@ -39,14 +44,14 @@ font create value_font -family TkFixedFont -size 30
 foreach designator [array names i2c_address_array] {
     # Create the frame
     set address $i2c_address_array($designator)
-    ttk::labelframe .thermistor_frame_array(${designator}) \
+    ttk::labelframe .script.thermistor_frame_array(${designator}) \
 	-text "Thermistor $designator (${address})" \
 	-labelanchor n \
 	-borderwidth 1 \
 	-relief sunken
 
     # Create the label
-    ttk::label .thermistor_frame_array($designator).thermistor_value_label \
+    ttk::label .script.thermistor_frame_array($designator).thermistor_value_label \
 	-text "Ready" \
 	-font value_font \
 	-width 36 \
@@ -59,12 +64,12 @@ set rownum 0
 
 foreach designator [lsort [array names i2c_address_array]] {
     # Place the frame
-    grid config .thermistor_frame_array($designator) -column 0 -row $rownum \
+    grid config .script.thermistor_frame_array($designator) -column 0 -row $rownum \
 	-columnspan 1 -rowspan 1 \
 	-padx 5 -pady 5 \
 	-sticky "snew"
     # Place the label inside the frame
-    pack .thermistor_frame_array($designator).thermistor_value_label \
+    pack .script.thermistor_frame_array($designator).thermistor_value_label \
 	-padx 5 -pady 5 \
 	-expand 1
 
@@ -74,7 +79,7 @@ foreach designator [lsort [array names i2c_address_array]] {
 # Set up grid for resizing
 #
 # Column 0 gets the extra space
-grid columnconfigure . 0 -weight 1
+grid columnconfigure .script 0 -weight 1
 
 try {
     ltc2485::init
@@ -204,7 +209,7 @@ proc update_labels {} {
 	    set label_string "[format "%0.3f" $bridge_resistance_ohms_array($designator)] "
 	    append label_string " ohms = "
 	    append label_string "[format "%0.3f" $temperature_c_array($designator)] C"
-	    .thermistor_frame_array($designator).thermistor_value_label \
+	    .script.thermistor_frame_array($designator).thermistor_value_label \
 		configure -text $label_string
 	    after 100
 	}
@@ -222,4 +227,4 @@ proc update_labels {} {
 after 1000 update_labels
 
 # Exit the script when the window is killed
-tkwait window .
+tkwait window .script

@@ -291,9 +291,6 @@ if { ![string equal [dict get $state channel] "simulator"] } {
     pirate::set_bitbang_mode
 }
 
-# Source the test script
-# source palmdale.tcl
-
 # Source the main window
 source root.tcl
 

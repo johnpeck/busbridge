@@ -142,7 +142,8 @@ pack .message_frame.text_frame.text \
 # Allow the message frame to expand
 grid rowconfigure . $grid_row_number -weight 1
 
-${log}::debug "Some stuff"
-
 # Exit the script when the window is killed
 tkwait window .
+
+# Destroy the root namespace when the window is killed
+namespace delete root

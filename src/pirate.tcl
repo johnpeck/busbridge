@@ -6,10 +6,8 @@ namespace eval pirate {
     
     proc init {channel} {
 	set data [connection::get_unsolicited $channel 100]
-	puts $data
 	sendcmd $channel ""
 	set data [connection::get_unsolicited $channel 100]
-	puts $data
     }
 
     proc sendcmd {channel data} {
