@@ -184,7 +184,7 @@ proc update_labels {} {
     global thermistor_leg_resistance_ohms
 
     # Bring the window forward
-    raise .
+    raise .script
 
     try {
 	foreach designator [array names i2c_address_array] {
@@ -228,3 +228,6 @@ after 1000 update_labels
 
 # Exit the script when the window is killed
 tkwait window .script
+
+# Make sure to cancel the periodic updates when the window is destroyed
+after cancel update_labels

@@ -151,7 +151,9 @@ proc source_script {file args} {
     set argc $::argc
     set ::argv $args
     set ::argc [llength $args]
-    set code [catch {uplevel [list source $file]} return]
+    # Use the #0 argument to upvar to make sure the script is sourced
+    # at the global level
+    set code [catch {uplevel #0 [list source $file]} return]
     set ::argv $argv
     set ::argc $argc
     return -code $code $return
