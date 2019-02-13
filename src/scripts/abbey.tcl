@@ -1,5 +1,3 @@
-# Sets values in the ad5252 dual digital potentiometer (pot)
-
 # This script is sourced at the top level, so we don't need to go up a
 # level to find the devices directory.
 
@@ -10,6 +8,19 @@ source_driver devices/ad5252.tcl
 
 # Source the LTC2485 thermistor reader driver
 source_driver devices/ltc2485.tcl
+
+# Create a window for Abbey
+toplevel .script
+menu .script.menubar
+.script configure -menu .script.menubar -height 150
+
+
+wm title .script "Abbey"
+
+# Raise the window when it's done being configured
+after 100 raise .script
+
+######################## Configure Bus Pirate ########################
 
 try {
     ad5252::init    
@@ -23,61 +34,6 @@ try {
 } trap {} {message optdict} {
     ${log}::error $message
     exit
-}
-
-########################### I2C addresses ############################
-
-# Lafayette's potentiometer's I2C address is 0x2d
-#
-# Folsom's address is 0x2c
-set pot_i2c_address 0x2d
-
-# Merritt's thermistor reader address is 0x27
-#
-# Folsom's aux thermistor reader address is 0x27
-set adc_i2c_address 0x27
-
-#################### Thermistor reader parameters ####################
-
-# Merritt's thermistor reference voltage is 3V
-#
-# Folsom's bridge leg resistance is 2.5V
-set thermistor_reference_volts 3.0
-
-# Merritt's bridge leg resistance is 150k
-#
-# Folsom's bridge leg resistance is 10k
-set thermistor_leg_resistance_ohms 150000
-
-############################### Tests ################################
-
-# Write to digital pot
-dict set test_dict pot_write_test description \
-    "Write to digital pot at I2C address $pot_i2c_address"
-
-# Read from thermistor
-dict set test_dict adc_read_test description \
-    "Read from ADC at $adc_i2c_address"
-
-
-proc get_bridge_resistance {Vref leg_resistance_ohms Vadc} {
-    # Return the bridge resistance in ohms
-    #
-    # Arguments:
-    #   Vref -- Voltage over the entire bridge
-    #   leg_resistance_ohms -- Resistors on each side of the bridge resistor
-    #   Vadc -- Voltage measured over the bridge resistor
-    set bridge_resistance_ohms [expr (2 * $Vadc * $leg_resistance_ohms)/($Vref - $Vadc)]
-    return $bridge_resistance_ohms
-}
-
-proc dashline {width} {
-    # Return a string of dashes of length width
-    set dashline ""
-    foreach dashchar [iterint 0 $width] {
-	append dashline "-"
-    }
-    return $dashline
 }
 
 # Set I2C speed
@@ -103,101 +59,221 @@ pirate::set_i2c_pullup_voltage 3.3
 # Enable I2C pullups.  This also turns peripheral power on.
 pirate::set_i2c_pullups 1
 
-# Schedule the end of the test
-set test_done false
-after 2000 {set test_done true}
 
-# Write data to the pot with write_data
-# write_data <slave address> <pot number> <value>
+namespace eval script {
 
-# Pot 1 is gain
-#
-# 0xff for unity gain
-# 0x0 for gain of about 20
-try {
-    ad5252::write_data $pot_i2c_address 1 0xff
-    dict set test_dict pot_write_test result "pass"
-} trap {} {message optdict} {
-    dict set test_dict pot_write_test result "fail"
-    ${log}::error $message
-    ${log}::error "Could not write to digital pot at $pot_i2c_address"
-}
+    variable state [dict create]
 
-after 100
+    variable offset_code 127
+    variable gain_code 255
 
-# Pot 3 is offset.  Set this higher to move the output more
-# positively.
-#
-# 0x0 for +3.6V
-# 0x7f for ~0V
-# 0xff for -3.6V
-try {
-    ad5252::write_data $pot_i2c_address 3 0x80    
-} trap {} {message optdict} {
-    ${log}::error $message
-    ${log}::error "Could not write to digital pot at $pot_i2c_address"
-}
+    ######################### I2C addresses ##########################
 
-# Read from the thermistor ADC
-try {
-    set adc_value [ltc2485::read_data $adc_i2c_address]
-    puts "Read [format "0x%x" $adc_value] from ADC"
-    set adc_volts [ltc2485::get_calibrated_voltage $thermistor_reference_volts $adc_value]
-    set outstr "This is [format "%0.3f" $adc_volts]V "
-    append outstr "with a [format "%0.3f" $thermistor_reference_volts]V reference"
-    puts $outstr
-    dict set test_dict adc_read_test result "pass"
-} trap {} {message optdict} {
-    ${log}::error $message
-    ${log}::error "Could not read from ADC at $adc_i2c_address.  Is 3.3V power applied?"
-    set adc_volts 0
-    dict set test_dict adc_read_test result "fail"
-}
+    # Lafayette's potentiometer's I2C address is 0x2d
+    #
+    # Folsom's address is 0x2c
+    variable pot_i2c_address 0x2d
 
-# Merritt has a leg resistance of 150k
-set bridge_resistance_ohms [get_bridge_resistance \
-				$thermistor_reference_volts \
-				$thermistor_leg_resistance_ohms $adc_volts]
-puts "This is [format "%0.3f" $bridge_resistance_ohms] ohms"
+    # Merritt's thermistor reader address is 0x27
+    #
+    # Folsom's aux thermistor reader address is 0x27
+    variable adc_i2c_address 0x27
 
+    ################## Thermistor reader parameters ##################
 
-# Start the event loop.  It will end when the test_done variable is
-# set.
-vwait test_done
+    # Merritt's thermistor reference voltage is 3V
+    #
+    # Folsom's bridge leg resistance is 2.5V
+    variable thermistor_reference_volts 3.0
 
-########################### Report results ###########################
+    # Palmdale's bridge leg resistance is 62k
+    variable thermistor_leg_resistance_ohms 62000
 
+    # Steinhart-Hart coefficients
+    #
+    # With a 62k bridge leg resistance, a 3V reference, and a 100k
+    # thermistor, the thermistor current will be 13uA.  Use the 10uA
+    # values.
+    variable thermistor_shh_array
+    array set thermistor_shh_array {
+	A 8.2458e-4
+	B 2.0913e-4
+	C 7.9780e-8
+    }
 
-dict set column_dict test_name width 50
-dict set column_dict test_name title "Test"
-dict set column_dict test_result width 10
-dict set column_dict test_result title "Result"
+    proc get_bridge_resistance {Vref leg_resistance_ohms Vadc} {
+	# Return the bridge resistance in ohms
+	#
+	# Arguments:
+	#   Vref -- Voltage over the entire bridge
+	#   leg_resistance_ohms -- Resistors on each side of the bridge resistor
+	#   Vadc -- Voltage measured over the bridge resistor
+	global log
+	set bridge_resistance_ohms [expr (2 * $Vadc * $leg_resistance_ohms)/($Vref - $Vadc)]
+	return $bridge_resistance_ohms
+    }
 
-foreach column [dict keys $column_dict] {
-    append format_string "%-*s "
-    lappend header_list "[dict get $column_dict $column width] "
-    lappend header_list "[dict get $column_dict $column title] "
-}
+    proc get_temperature_c {resistance} {
+	# Return the calculated temperature
+	variable thermistor_shh_array
+	set temperature_k [expr 1/($thermistor_shh_array(A) + \
+				       $thermistor_shh_array(B) * log($resistance) + \
+				       $thermistor_shh_array(C) * (log($resistance))**3)]
+	set temperature_c [expr $temperature_k - 273]
+	return $temperature_c
+    }
 
-set header [format "$format_string" {*}$header_list]
-puts ""
-puts $header
-puts [dashline [string length $header]]
-
-
-foreach test [dict keys $test_dict] {
-    set description [dict get $test_dict $test description]
-    set result [dict get $test_dict $test result]
-    set line_list [list]
-    foreach column [dict keys $column_dict] {
-	lappend line_list "[dict get $column_dict $column width] "
-	if {[string match $column test_name]} {
-	    lappend line_list $description
+    proc update_temperature {} {
+	global log
+	try {
+	    set adc_value [ltc2485::read_data $script::adc_i2c_address]	    
+	} trap {} {message optdict} {
+	    ${log}::error $message
+	    set adc_value 0
 	}
-	if {[string match $column test_result]} {
-	    lappend line_list $result
+
+	${log}::debug "Read [format "0x%x" $adc_value] from ADC"
+	set adc_volts [ltc2485::get_calibrated_voltage \
+			   $script::thermistor_reference_volts $adc_value]
+	set outstr "This is [format "%0.3f" $adc_volts]V "
+	append outstr "with a [format "%0.3f" $script::thermistor_reference_volts]V "
+	append outstr "reference"
+	${log}::debug $outstr
+	set bridge_resistance_ohms [script::get_bridge_resistance \
+					$script::thermistor_reference_volts \
+					$script::thermistor_leg_resistance_ohms \
+					$adc_volts]
+	set outstr "This is "
+	append outstr "[format "%0.3f" $bridge_resistance_ohms] ohms"
+	${log}::debug $outstr
+	set temperature_c [script::get_temperature_c $bridge_resistance_ohms]
+	.script.temperature_frame.temperature_label configure -text \
+	    "[format "%0.3f" $temperature_c] C"
+	# after 1000 script::update_temperature
+    }
+
+    proc apply_values {} {
+	global log
+	try {
+	    # Pot 2 is offset
+	    ad5252::write_data $script::pot_i2c_address 2 $script::offset_code
+	    after 1000
+	    # Pot 1 is gain	    
+	    ad5252::write_data $script::pot_i2c_address 1 $script::gain_code
+	} trap {} {message optdict} {
+	    ${log}::error $message
 	}
     }
-    puts [format "$format_string" {*}$line_list]
+
 }
-puts ""
+
+
+########################### Define widgets ###########################
+
+font create designator_font -family TkFixedFont -size 10 -weight bold
+font create value_font -family TkFixedFont -size 30
+
+# Detector offset
+ttk::labelframe .script.offset_code_frame \
+    -text "Offset code" \
+    -labelanchor n \
+    -borderwidth 1 \
+    -relief sunken
+
+ttk::entry .script.offset_code_frame.offset_code_entry \
+    -textvariable script::offset_code \
+    -width 3 \
+    -justify right \
+    -font value_font
+
+# Detector gain
+ttk::labelframe .script.gain_code_frame \
+    -text "Gain code" \
+    -labelanchor n \
+    -borderwidth 1 \
+    -relief sunken
+
+ttk::entry .script.gain_code_frame.gain_code_entry \
+    -textvariable script::gain_code \
+    -width 3 \
+    -justify right \
+    -font value_font
+
+# Temperature value
+ttk::labelframe .script.temperature_frame \
+    -text "Temperature" \
+    -labelanchor n \
+    -borderwidth 1 \
+    -relief sunken
+
+ttk::label .script.temperature_frame.temperature_label \
+    -text "Ready" \
+    -font value_font \
+    -width 36 \
+    -anchor center
+
+# Button for setting values
+ttk::button .script.apply_button \
+    -text "Apply" \
+    -command script::apply_values
+
+
+########################## Position widgets ##########################
+
+set rownum 0
+
+# Offset code frame
+grid config .script.offset_code_frame -column 0 -row $rownum \
+    -columnspan 1 -rowspan 1 \
+    -padx 5 -pady 5 \
+    -sticky "snew"
+
+# Place the entry inside the frame
+pack .script.offset_code_frame.offset_code_entry \
+    -padx 5 -pady 5 \
+    -expand 1
+
+incr rownum
+# Gain code frame
+grid config .script.gain_code_frame -column 0 -row $rownum \
+    -columnspan 1 -rowspan 1 \
+    -padx 5 -pady 5 \
+    -sticky "snew"
+
+# Place the entry inside the frame
+pack .script.gain_code_frame.gain_code_entry \
+    -padx 5 -pady 5 \
+    -expand 1
+
+incr rownum
+# Temperature
+grid config .script.temperature_frame -column 0 -row $rownum \
+    -columnspan 1 -rowspan 1 \
+    -padx 5 -pady 5 \
+    -sticky "snew"
+
+# Place the entry inside the frame
+pack .script.temperature_frame.temperature_label \
+    -padx 5 -pady 5 \
+    -expand 1
+
+incr rownum
+# Apply values button
+grid config .script.apply_button -column 0 -row $rownum \
+    -padx 5 -pady 5
+    
+
+# Set up grid for resizing
+#
+# Column 0 gets the extra space
+grid columnconfigure .script 0 -weight 1
+
+
+# Wait 1s for power to come on
+after 1000 script::update_temperature
+
+# Exit the script when the window is killed
+tkwait window .script
+
+# Make sure to cancel the periodic updates when the window is destroyed
+after cancel script::update_temperature
