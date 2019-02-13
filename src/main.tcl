@@ -123,7 +123,10 @@ set bus_pirate_qualified_fw_list [list "Community Firmware v7.0 - goo.gl/gCzQnW"
 
 
 # --------------------- Tools for code modules ------------------------
-source module_tools.tcl	
+source module_tools.tcl
+
+################## Tools for validating input data ###################
+source validate.tcl
 
 ########################### Set up logging ###########################
 

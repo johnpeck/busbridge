@@ -14,7 +14,6 @@ toplevel .script
 menu .script.menubar
 .script configure -menu .script.menubar -height 150
 
-
 wm title .script "Abbey"
 
 # Raise the window when it's done being configured
@@ -155,9 +154,9 @@ namespace eval script {
     proc apply_values {} {
 	global log
 	try {
-	    # Pot 2 is offset
-	    ad5252::write_data $script::pot_i2c_address 2 $script::offset_code
-	    after 1000
+	    # Pot 3 is offset
+	    ad5252::write_data $script::pot_i2c_address 3 $script::offset_code
+	    after 100
 	    # Pot 1 is gain	    
 	    ad5252::write_data $script::pot_i2c_address 1 $script::gain_code
 	} trap {} {message optdict} {
@@ -182,6 +181,8 @@ ttk::labelframe .script.offset_code_frame \
 
 ttk::entry .script.offset_code_frame.offset_code_entry \
     -textvariable script::offset_code \
+    -validate key \
+    -validatecommand {validate::integer %P 0 255 3} \
     -width 3 \
     -justify right \
     -font value_font
@@ -195,6 +196,8 @@ ttk::labelframe .script.gain_code_frame \
 
 ttk::entry .script.gain_code_frame.gain_code_entry \
     -textvariable script::gain_code \
+    -validate key \
+    -validatecommand {validate::integer %P 0 255 3} \
     -width 3 \
     -justify right \
     -font value_font
@@ -209,7 +212,7 @@ ttk::labelframe .script.temperature_frame \
 ttk::label .script.temperature_frame.temperature_label \
     -text "Ready" \
     -font value_font \
-    -width 36 \
+    -width 15 \
     -anchor center
 
 # Button for setting values
