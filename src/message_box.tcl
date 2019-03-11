@@ -10,9 +10,7 @@ namespace eval message_box {
 
     # Keep track of the number of lines inserted in the text widget
     variable inserted_lines 0
-
-    
-    
+  
 }
 
 # Set up the message box

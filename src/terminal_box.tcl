@@ -1,10 +1,6 @@
 # Pull in Reflected channel support
 package require tcl::chan::events
-${log}::info [modinfo tcl::chan::events]
-
 package require tcl::chan::textwindow
-${log}::info [modinfo tcl::chan::textwindow]
-
 
 # Set up the terminal box
 ttk::labelframe .terminal_frame -text "Terminal" \
@@ -30,7 +26,6 @@ scrollbar .terminal_frame.text_frame.scrollbar \
     -orient vertical \
     -command {.terminal_frame.text_frame.text yview}
 
-
 namespace eval terminal_box {
     variable state [dict create]
 
@@ -46,6 +41,9 @@ namespace eval terminal_box {
     # Create a write-only channel connected to a text widget
     variable text [::tcl::chan::textwindow .terminal_frame.text_frame.text]
 }
+
+# Test the reflected channel
+puts $terminal_box::text "Testing terminal_box::text channel"
 
 
 
