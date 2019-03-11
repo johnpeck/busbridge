@@ -131,6 +131,11 @@ proc log_manager {level text} {
 	    .message_frame.text_frame.text tag configure errortag -foreground red
 	}
     }
+    # Scroll to the end
+    if [namespace exists root] {
+	# The root Tk window has been created
+	.message_frame.text_frame.text see end	
+    }
 }
 
 # Define the callback function for the logger for each log level
