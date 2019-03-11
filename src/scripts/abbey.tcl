@@ -81,23 +81,24 @@ namespace eval script {
     ################## Thermistor reader parameters ##################
 
     # Merritt's thermistor reference voltage is 3V
-    #
     # Folsom's bridge leg resistance is 2.5V
     variable thermistor_reference_volts 3.0
 
     # Palmdale's bridge leg resistance is 62k
-    variable thermistor_leg_resistance_ohms 62000
+    # Merritt's bridge leg resistance is 150k
+    variable thermistor_leg_resistance_ohms 150000
 
     # Steinhart-Hart coefficients
     #
-    # With a 62k bridge leg resistance, a 3V reference, and a 100k
-    # thermistor, the thermistor current will be 13uA.  Use the 10uA
-    # values.
+    # Murata NCP03XM222E05RL thermistor used in Vigo detectors
+    # A: 1.48e-3
+    # B: 2.27e-4
+    # C: 2.81e-7
     variable thermistor_shh_array
     array set thermistor_shh_array {
-	A 8.2458e-4
-	B 2.0913e-4
-	C 7.9780e-8
+	A 1.48e-3
+	B 2.27e-4
+	C 2.81e-7
     }
 
     proc get_bridge_resistance {Vref leg_resistance_ohms Vadc} {
@@ -162,6 +163,7 @@ namespace eval script {
 	} trap {} {message optdict} {
 	    ${log}::error $message
 	}
+	script::update_temperature
     }
 
 }

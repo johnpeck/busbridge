@@ -32,6 +32,12 @@ local_module_path = lib
 external_modules = $(tcllib_path)/log \
                    $(tcllib_path)/cmdline
 
+# Add reflected channel support.  Reflected channels allow things like
+# channels connected to widgets.  You can set up a channel that
+# automatically writes to a text widget.
+external_modules += $(tcllib_path)/virtchannel_core
+external_modules += $(tcllib_path)/virtchannel_base
+
 # The tclkits to package in the starpacks.
 #
 # Make sure to get a Tclkit with Tk -- so you'll need a Tclkit with

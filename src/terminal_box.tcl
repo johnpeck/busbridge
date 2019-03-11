@@ -1,7 +1,9 @@
 # Pull in Reflected channel support
 package require tcl::chan::events
-package require tcl::chan::textwindow
+${log}::info [modinfo tcl::chan::events]
 
+package require tcl::chan::textwindow
+${log}::info [modinfo tcl::chan::textwindow]
 
 
 # Set up the terminal box
@@ -41,6 +43,7 @@ namespace eval terminal_box {
     # Keep track of the number of lines inserted in the text widget
     variable inserted_lines 0
 
+    # Create a write-only channel connected to a text widget
     variable text [::tcl::chan::textwindow .terminal_frame.text_frame.text]
 }
 
